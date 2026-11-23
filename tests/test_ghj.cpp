@@ -134,6 +134,58 @@ TEST_MAIN_BEGIN
     CHECK_EQ(cost_stats.ghj_overflow_partitions, std::int64_t{0});
   }
 
+  // SPEC.md section 9 explicitly requires a case where skew forces the
+  // BNLJ-style fallback (not just recursion): every tuple on both sides
+  // shares the same join key, so no amount of re-hashing with a new seed
+  // can ever split that bucket — recursion exhausts its depth limit and
+  // GHJ must fall back, incrementing ghj_overflow_partitions.
+  {
+    std::string hs_path = TempPath("ghj_hot_s.bin");
+    std::string hr_path = TempPath("ghj_hot_r.bin");
+    std::filesystem::remove(hs_path);
+    std::filesystem::remove(hr_path);
+    IoStats hot_stats;
+    DiskManager hot_dm(&hot_stats);
+    BufferPool hot_bp(&hot_dm, 64, &hot_stats);
+    FileId hs_file = hot_dm.OpenFile(hs_path, FileKind::kBase);
+    FileId hr_file = hot_dm.OpenFile(hr_path, FileKind::kBase);
+    HeapFile hs_heap(&hot_bp, &hot_dm, hs_file, &s_schema);
+    HeapFile hr_heap(&hot_bp, &hot_dm, hr_file, &r_schema);
+
+    constexpr int kHotSailors = 60;   // all sid=0: ~20 pages
+    constexpr int kHotReserves = 60;  // all sid=0: ~20 pages
+    std::vector<Tuple> hot_sailors, hot_reserves;
+    for (int i = 0; i < kHotSailors; ++i) hot_sailors.push_back({0, 5, 20 + i});
+    for (int i = 0; i < kHotReserves; ++i) hot_reserves.push_back({0, i, 100 + i});
+    for (const Tuple& t : hot_sailors) hs_heap.Append(t);
+    for (const Tuple& t : hot_reserves) hr_heap.Append(t);
+    hot_bp.FlushAll();
+
+    std::vector<Tuple> hot_expected =
+        ReferenceJoinQA(hot_sailors, hot_reserves, /*rmin=*/0, /*dmin=*/0);
+    std::sort(hot_expected.begin(), hot_expected.end());
+    CHECK_EQ(hot_expected.size(), static_cast<std::size_t>(kHotSailors) * kHotReserves);
+
+    SeqScan hs_scan(&hs_heap, {"S.sid", "S.rating", "S.age"});
+    SeqScan hr_scan(&hr_heap, {"R.sid", "R.bid", "R.day"});
+    GHJ hot_ghj(&hs_scan, 0, &s_schema, {"S.sid", "S.rating", "S.age"}, &hr_scan, 0,
+                &r_schema, {"R.sid", "R.bid", "R.day"}, /*buffer_pages=*/3, &hot_bp,
+                &hot_dm, TempPath("ghj_hot_tmp"), &hot_stats);
+    Projection hot_proj(&hot_ghj, {"S.sid", "S.rating", "R.bid", "R.day"});
+    hot_proj.Open();
+    std::vector<Tuple> hot_actual;
+    Tuple ht;
+    while (hot_proj.Next(&ht)) hot_actual.push_back(ht);
+    hot_proj.Close();
+    std::sort(hot_actual.begin(), hot_actual.end());
+
+    CHECK(hot_actual == hot_expected);
+    CHECK(hot_stats.ghj_overflow_partitions > 0);
+
+    std::filesystem::remove(hs_path);
+    std::filesystem::remove(hr_path);
+  }
+
   std::filesystem::remove(s_path);
   std::filesystem::remove(r_path);
 TEST_MAIN_END

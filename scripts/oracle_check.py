@@ -59,11 +59,12 @@ def oracle_qa(data_dir, rmin, dmin):
     return len(rows), checksum(rows)
 
 
-def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin):
+def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin, method):
     out = subprocess.run(
         [
             run_query_bin,
             "--data-dir", data_dir,
+            "--method", method,
             "--buffer-pages", str(buffer_pages),
             "--rmin", str(rmin),
             "--dmin", str(dmin),
@@ -82,11 +83,12 @@ def main():
     parser.add_argument("--buffer-pages", type=int, default=10)
     parser.add_argument("--rmin", type=int, default=5)
     parser.add_argument("--dmin", type=int, default=1)
+    parser.add_argument("--method", default="bnlj", choices=["bnlj", "smj", "ghj"])
     args = parser.parse_args()
 
     oracle_rows, oracle_checksum = oracle_qa(args.data_dir, args.rmin, args.dmin)
     engine_rows, engine_checksum, engine_out = run_engine(
-        args.run_query, args.data_dir, args.buffer_pages, args.rmin, args.dmin
+        args.run_query, args.data_dir, args.buffer_pages, args.rmin, args.dmin, args.method
     )
 
     ok = oracle_rows == engine_rows and oracle_checksum == engine_checksum
