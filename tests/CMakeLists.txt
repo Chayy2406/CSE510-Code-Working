@@ -1,0 +1,15 @@
+# Each test is its own executable (no GoogleTest): plain assert-style
+# checks via test_util.h, registered individually with CTest.
+function(add_qe_test name)
+  add_executable(${name} ${ARGN})
+  target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(${name} PRIVATE qe_common qe_storage)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+add_executable(test_smoke test_smoke.cpp)
+target_include_directories(test_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME test_smoke COMMAND test_smoke)
+
+add_qe_test(test_disk_manager test_disk_manager.cpp)
+add_qe_test(test_buffer_pool test_buffer_pool.cpp)
