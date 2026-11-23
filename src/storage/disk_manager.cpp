@@ -20,10 +20,18 @@ FileId DiskManager::OpenFile(const std::string& path, FileKind kind) {
     throw std::system_error(errno, std::generic_category(),
                              "DiskManager::OpenFile: " + path);
   }
+  // page_count must reflect pages already on disk (a page_count of 0 for
+  // an existing file would make every reader of it think the file is
+  // empty), not just pages allocated through this DiskManager instance.
+  off_t size = lseek(fd, 0, SEEK_END);
+  if (size < 0) {
+    throw std::system_error(errno, std::generic_category(),
+                             "DiskManager::OpenFile: lseek " + path);
+  }
   FileEntry entry;
   entry.fd = fd;
   entry.kind = kind;
-  entry.page_count = 0;
+  entry.page_count = static_cast<PageNo>(size / static_cast<off_t>(kPageSize));
   files_.push_back(entry);
   return static_cast<FileId>(files_.size() - 1);
 }

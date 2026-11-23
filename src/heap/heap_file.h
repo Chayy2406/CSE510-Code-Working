@@ -32,6 +32,16 @@ class HeapFile {
   // (page_no, slot) order.
   void Scan(const std::function<void(Rid, const Tuple&)>& fn) const;
 
+  // Calls fn(rid, tuple) for every tuple on one page. Lets a blocked join
+  // read a specific page range without re-scanning the whole file.
+  void ScanPage(PageNo page_no, const std::function<void(Rid, const Tuple&)>& fn) const;
+
+  // Pull-based cursor for an iterator-style scan (used by the SeqScan
+  // operator). Caller owns (page_no, slot), initialized to {0, 0} before
+  // the first call. Returns false and leaves *out untouched once the file
+  // is exhausted.
+  bool NextTuple(PageNo* page_no, std::int32_t* slot, Tuple* out) const;
+
   std::size_t NumPages() const { return page_count_; }
   std::size_t TuplesPerPage() const { return tuples_per_page_; }
 

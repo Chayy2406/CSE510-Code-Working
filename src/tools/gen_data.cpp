@@ -109,5 +109,12 @@ int main(int argc, char** argv) {
              gen.GenerateReserves(num_reserves, num_sailors, num_boats),
              reserves_key_col, &gen, &catalog);
 
+  // Without this, whichever pages are still dirty and resident when `bp`
+  // is destroyed are silently lost: BufferPool has no flush-on-destroy.
+  // (It happened to work before this call existed only because the stats
+  // scan right after each table's generation cascades an LRU eviction
+  // that flushes everything as a side effect — not something to rely on.)
+  bp.FlushAll();
+
   return 0;
 }

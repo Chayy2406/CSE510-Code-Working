@@ -94,19 +94,45 @@ Tuple HeapFile::Fetch(Rid rid) const {
 
 void HeapFile::Scan(const std::function<void(Rid, const Tuple&)>& fn) const {
   for (std::size_t p = 0; p < page_count_; ++p) {
-    PageNo page_no = static_cast<PageNo>(p);
-    Page* page = bp_->Fetch(file_, page_no);
-    std::int32_t count = ReadTupleCount(page);
-    for (std::int32_t slot = 0; slot < count; ++slot) {
-      std::size_t offset =
-          kHeaderBytes + static_cast<std::size_t>(slot) * tuple_bytes_;
-      Tuple tuple(schema_->NumColumns());
-      std::memcpy(tuple.data(), page->Data() + offset,
-                  tuple.size() * sizeof(std::int32_t));
-      fn(Rid{page_no, slot}, tuple);
-    }
-    bp_->Unpin(file_, page_no, false);
+    ScanPage(static_cast<PageNo>(p), fn);
   }
+}
+
+void HeapFile::ScanPage(PageNo page_no,
+                         const std::function<void(Rid, const Tuple&)>& fn) const {
+  Page* page = bp_->Fetch(file_, page_no);
+  std::int32_t count = ReadTupleCount(page);
+  for (std::int32_t slot = 0; slot < count; ++slot) {
+    std::size_t offset =
+        kHeaderBytes + static_cast<std::size_t>(slot) * tuple_bytes_;
+    Tuple tuple(schema_->NumColumns());
+    std::memcpy(tuple.data(), page->Data() + offset,
+                tuple.size() * sizeof(std::int32_t));
+    fn(Rid{page_no, slot}, tuple);
+  }
+  bp_->Unpin(file_, page_no, false);
+}
+
+bool HeapFile::NextTuple(PageNo* page_no, std::int32_t* slot, Tuple* out) const {
+  while (static_cast<std::size_t>(*page_no) < page_count_) {
+    Page* page = bp_->Fetch(file_, *page_no);
+    std::int32_t count = ReadTupleCount(page);
+    if (*slot >= count) {
+      bp_->Unpin(file_, *page_no, false);
+      ++(*page_no);
+      *slot = 0;
+      continue;
+    }
+    std::size_t offset =
+        kHeaderBytes + static_cast<std::size_t>(*slot) * tuple_bytes_;
+    out->resize(schema_->NumColumns());
+    std::memcpy(out->data(), page->Data() + offset,
+                out->size() * sizeof(std::int32_t));
+    bp_->Unpin(file_, *page_no, false);
+    ++(*slot);
+    return true;
+  }
+  return false;
 }
 
 }  // namespace qe
