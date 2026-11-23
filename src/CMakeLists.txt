@@ -21,8 +21,12 @@ target_link_libraries(qe_gen PUBLIC qe_heap)
 add_executable(gen_data tools/gen_data.cpp)
 target_link_libraries(gen_data PRIVATE qe_gen qe_catalog qe_heap qe_storage)
 
-add_library(qe_exec INTERFACE)
-target_link_libraries(qe_exec INTERFACE qe_heap)
+add_library(qe_exec
+  exec/external_sort.cpp
+  exec/smj.cpp
+  exec/ghj.cpp
+)
+target_link_libraries(qe_exec PUBLIC qe_heap)
 
 add_library(qe_ref_executor tools/ref_executor.cpp)
 target_link_libraries(qe_ref_executor PUBLIC qe_heap)

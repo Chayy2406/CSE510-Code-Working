@@ -19,6 +19,7 @@ struct IoStats {
 
   std::int64_t buffer_hits = 0;
   std::int64_t tuples_output = 0;
+  std::int64_t ghj_overflow_partitions = 0;  // Grace Hash Join BNLJ-fallback count
 
   void Reset() { *this = IoStats{}; }
 };

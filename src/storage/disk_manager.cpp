@@ -100,4 +100,12 @@ void DiskManager::WritePage(FileId file, PageNo page_no, const char* buf) {
   if (entry.kind == FileKind::kTemp) ++stats_->writes_temp;
 }
 
+void DiskManager::CloseFile(FileId file) {
+  FileEntry& entry = Entry(file);
+  if (entry.fd >= 0) {
+    close(entry.fd);
+    entry.fd = -1;
+  }
+}
+
 }  // namespace qe

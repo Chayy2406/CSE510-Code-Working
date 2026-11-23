@@ -40,6 +40,13 @@ class DiskManager {
   // Writes kPageSize bytes from buf at page_no. Counted as one page write.
   void WritePage(FileId file, PageNo page_no, const char* buf);
 
+  // Closes the underlying fd early. Only safe once nothing in the
+  // BufferPool still has a dirty, resident page for this file (flush
+  // first) and nothing will touch this FileId again — used to bound the
+  // number of open temp files during multi-pass external sort / grace
+  // hash join, which would otherwise exhaust the process's fd limit.
+  void CloseFile(FileId file);
+
  private:
   struct FileEntry {
     int fd = -1;

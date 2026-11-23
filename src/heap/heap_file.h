@@ -44,6 +44,7 @@ class HeapFile {
 
   std::size_t NumPages() const { return page_count_; }
   std::size_t TuplesPerPage() const { return tuples_per_page_; }
+  FileId Id() const { return file_; }
 
  private:
   static constexpr std::size_t kHeaderBytes = sizeof(std::int32_t);
