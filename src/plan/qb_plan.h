@@ -1,0 +1,62 @@
+#pragma once
+
+#include "plan/plan_node.h"
+
+namespace qe {
+
+// Builds the PlanNode tree for QB (SPEC.md section 7): Sailors join
+// Reserves on sid, join Boats on bid, filtered by rating > rmin,
+// age < amax, color = color, day BETWEEN d1 AND d2.
+//
+// join_order "order1" = (S,R,B), joined as (R join S) join B;
+// join_order "order2" = (R,B,S), joined as (R join B) join S
+// (SPEC.md section 8: QB's two left-deep orders). R is always the outer
+// side of the first join and the accumulated left side of the second,
+// so that whichever of S or B is the inner of a given join is reachable
+// as a plain (possibly filtered) base table scan — required for that
+// join to use INLJ (SPEC.md: "INLJ only where the inner has an index";
+// the indices this project builds are on S.sid and B.bid).
+//
+// pushdown=true wraps each base scan in its own predicates; pushdown=false
+// applies every predicate once, after both joins.
+inline std::unique_ptr<PlanNode> BuildQBPlan(const std::string& join_order,
+                                             const std::string& method1,
+                                             const std::string& method2, bool pushdown,
+                                             std::int32_t rmin, std::int32_t amax,
+                                             std::int32_t color, std::int32_t d1,
+                                             std::int32_t d2) {
+  std::vector<NamedPredicate> s_preds = {{"S.rating", CompareOp::kGt, rmin},
+                                          {"S.age", CompareOp::kLt, amax}};
+  std::vector<NamedPredicate> r_preds = {{"R.day", CompareOp::kGe, d1},
+                                          {"R.day", CompareOp::kLe, d2}};
+  std::vector<NamedPredicate> b_preds = {{"B.color", CompareOp::kEq, color}};
+
+  auto make_leaf = [&](const std::string& table, std::vector<NamedPredicate> preds) {
+    auto scan = PlanNode::Scan(table);
+    if (pushdown) return PlanNode::Select(std::move(scan), std::move(preds));
+    return scan;
+  };
+
+  auto s_leaf = make_leaf("S", s_preds);
+  auto r_leaf = make_leaf("R", r_preds);
+  auto b_leaf = make_leaf("B", b_preds);
+
+  std::unique_ptr<PlanNode> top;
+  if (join_order == "order1") {
+    auto join1 = PlanNode::Join(method1, std::move(r_leaf), "R.sid", std::move(s_leaf), "S.sid");
+    top = PlanNode::Join(method2, std::move(join1), "R.bid", std::move(b_leaf), "B.bid");
+  } else {
+    auto join1 = PlanNode::Join(method1, std::move(r_leaf), "R.bid", std::move(b_leaf), "B.bid");
+    top = PlanNode::Join(method2, std::move(join1), "R.sid", std::move(s_leaf), "S.sid");
+  }
+
+  if (!pushdown) {
+    std::vector<NamedPredicate> all_preds = s_preds;
+    all_preds.insert(all_preds.end(), r_preds.begin(), r_preds.end());
+    all_preds.insert(all_preds.end(), b_preds.begin(), b_preds.end());
+    top = PlanNode::Select(std::move(top), std::move(all_preds));
+  }
+  return top;
+}
+
+}  // namespace qe

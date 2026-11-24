@@ -59,6 +59,21 @@ def oracle_qa(data_dir, rmin, dmin):
     return len(rows), checksum(rows)
 
 
+def oracle_qb(data_dir, rmin, amax, color, d1, d2):
+    conn = sqlite3.connect(":memory:")
+    load_csv(conn, "S", f"{data_dir}/S.csv", ["sid", "rating", "age"])
+    load_csv(conn, "R", f"{data_dir}/R.csv", ["sid", "bid", "day"])
+    load_csv(conn, "B", f"{data_dir}/B.csv", ["bid", "color"])
+    cur = conn.execute(
+        "SELECT S.sid, R.day, B.color FROM S JOIN R ON S.sid = R.sid JOIN B ON R.bid = B.bid "
+        "WHERE S.rating > ? AND S.age < ? AND B.color = ? AND R.day BETWEEN ? AND ?",
+        (rmin, amax, color, d1, d2),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return len(rows), checksum(rows)
+
+
 def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin, method):
     out = subprocess.run(
         [

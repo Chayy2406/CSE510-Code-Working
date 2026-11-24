@@ -3,7 +3,7 @@
 function(add_qe_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(${name} PRIVATE qe_common qe_storage qe_heap qe_catalog qe_gen qe_exec qe_index qe_ref_executor)
+  target_link_libraries(${name} PRIVATE qe_common qe_storage qe_heap qe_catalog qe_gen qe_exec qe_index qe_plan qe_ref_executor)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -22,3 +22,4 @@ add_qe_test(test_smj test_smj.cpp)
 add_qe_test(test_ghj test_ghj.cpp)
 add_qe_test(test_bplus_tree test_bplus_tree.cpp)
 add_qe_test(test_inlj test_inlj.cpp)
+add_qe_test(test_plan_builder test_plan_builder.cpp)

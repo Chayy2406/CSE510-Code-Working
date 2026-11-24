@@ -17,4 +17,13 @@ std::vector<Tuple> ReferenceJoinQA(const std::vector<Tuple>& sailors,
                                     const std::vector<Tuple>& reserves,
                                     std::int32_t rmin, std::int32_t dmin);
 
+// QB: Sailors join Reserves on sid, join Boats on bid, filtered by
+// rating > rmin, age < amax, color = color, day BETWEEN d1 AND d2,
+// projected to (S.sid, R.day, B.color).
+std::vector<Tuple> ReferenceJoinQB(const std::vector<Tuple>& sailors,
+                                    const std::vector<Tuple>& reserves,
+                                    const std::vector<Tuple>& boats, std::int32_t rmin,
+                                    std::int32_t amax, std::int32_t color, std::int32_t d1,
+                                    std::int32_t d2);
+
 }  // namespace qe
