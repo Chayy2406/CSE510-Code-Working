@@ -1,0 +1,11 @@
+experiment,query,plan_id,plan_desc,dataset_id,seed,scale,key_dist,zipf_theta,corr,order,B,run,time_ms,page_reads,page_writes,reads_base,reads_index,reads_temp,writes_temp,buffer_hits,tuples_out,checksum,est_io,est_out_rows,ghj_overflow_partitions,oracle_ok,x_value
+e2,QB,pushdown_on,pushdown_on,ds1,7,0.1,uniform,1.0,0.0,random,15,0,28.8762,1360,109,1251,0,109,109,22577,0,0x0,1302.0,7.39061,0,True,1
+e2,QB,pushdown_on,pushdown_on,ds1,7,0.1,uniform,1.0,0.0,random,15,1,24.5282,1338,87,1251,0,87,87,17201,0,0x0,1291.0,5.74825,0,True,3
+e2,QB,pushdown_on,pushdown_on,ds1,7,0.1,uniform,1.0,0.0,random,15,2,16.6268,1316,65,1251,0,65,65,11564,0,0x0,1280.0,4.10589,0,True,5
+e2,QB,pushdown_on,pushdown_on,ds1,7,0.1,uniform,1.0,0.0,random,15,3,12.1212,1294,43,1251,0,43,43,6521,0,0x0,1268.0,2.46354,0,True,7
+e2,QB,pushdown_on,pushdown_on,ds1,7,0.1,uniform,1.0,0.0,random,15,4,5.38596,1272,21,1251,0,21,21,1383,0,0x0,1257.0,0.821179,0,True,9
+e2,QB,pushdown_off,pushdown_off,ds1,7,0.1,uniform,1.0,0.0,random,15,5,39.773,1387,136,1251,0,136,136,29868,0,0x0,1314.0,27.2109,0,True,1
+e2,QB,pushdown_off,pushdown_off,ds1,7,0.1,uniform,1.0,0.0,random,15,6,37.4867,1387,136,1251,0,136,136,29868,0,0x0,1314.0,27.2109,0,True,3
+e2,QB,pushdown_off,pushdown_off,ds1,7,0.1,uniform,1.0,0.0,random,15,7,37.366,1387,136,1251,0,136,136,29868,0,0x0,1314.0,27.2109,0,True,5
+e2,QB,pushdown_off,pushdown_off,ds1,7,0.1,uniform,1.0,0.0,random,15,8,43.2467,1387,136,1251,0,136,136,29868,0,0x0,1314.0,27.2109,0,True,7
+e2,QB,pushdown_off,pushdown_off,ds1,7,0.1,uniform,1.0,0.0,random,15,9,34.8684,1387,136,1251,0,136,136,29868,0,0x0,1314.0,27.2109,0,True,9

@@ -1,0 +1,23 @@
+{
+  "experiment": "e2",
+  "description": "When does pushdown help most? (QB, vary S.rating selectivity x pushdown on/off)",
+  "query": "qb",
+  "repeats": 5,
+  "x_field": "rmin",
+  "x_label": "rmin (S.rating > rmin selectivity)",
+  "dataset_defaults": {"seed": 7, "scale": 0.1, "key_dist": "uniform", "zipf_theta": 1.0, "corr": 0.0, "order": "random"},
+  "query_defaults": {"buffer_pages": 15, "join_order": "order1", "method1": "bnlj", "method2": "bnlj",
+                      "amax": 60, "color": 1, "d1": 1, "d2": 365},
+  "points": [
+    {"rmin": 1, "pushdown": "on", "label": "pushdown_on"},
+    {"rmin": 3, "pushdown": "on", "label": "pushdown_on"},
+    {"rmin": 5, "pushdown": "on", "label": "pushdown_on"},
+    {"rmin": 7, "pushdown": "on", "label": "pushdown_on"},
+    {"rmin": 9, "pushdown": "on", "label": "pushdown_on"},
+    {"rmin": 1, "pushdown": "off", "label": "pushdown_off"},
+    {"rmin": 3, "pushdown": "off", "label": "pushdown_off"},
+    {"rmin": 5, "pushdown": "off", "label": "pushdown_off"},
+    {"rmin": 7, "pushdown": "off", "label": "pushdown_off"},
+    {"rmin": 9, "pushdown": "off", "label": "pushdown_off"}
+  ]
+}

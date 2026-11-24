@@ -1,0 +1,18 @@
+{
+  "experiment": "e4",
+  "description": "Does skew hurt hash join more than sort-merge? (QA, vary R.sid zipf_theta)",
+  "query": "qa",
+  "repeats": 5,
+  "x_field": "zipf_theta",
+  "x_label": "Zipf theta (R.sid skew; 0 = uniform)",
+  "dataset_defaults": {"seed": 7, "scale": 0.1, "key_dist": "zipf", "corr": 0.0, "order": "random"},
+  "query_defaults": {"buffer_pages": 15, "rmin": 1, "dmin": 1},
+  "methods": ["smj", "ghj"],
+  "points": [
+    {"zipf_theta": 0.0},
+    {"zipf_theta": 0.5},
+    {"zipf_theta": 1.0},
+    {"zipf_theta": 1.5},
+    {"zipf_theta": 2.0}
+  ]
+}

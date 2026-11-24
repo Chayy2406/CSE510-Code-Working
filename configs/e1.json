@@ -1,0 +1,18 @@
+{
+  "experiment": "e1",
+  "description": "How big is the cost spread between plans across table sizes? (QA, vary scale)",
+  "query": "qa",
+  "repeats": 5,
+  "x_field": "scale",
+  "x_label": "Scale factor",
+  "dataset_defaults": {"seed": 7, "key_dist": "uniform", "zipf_theta": 1.0, "corr": 0.0, "order": "random"},
+  "query_defaults": {"buffer_pages": 15, "rmin": 4, "dmin": 100},
+  "methods": ["bnlj", "smj", "ghj", "inlj"],
+  "points": [
+    {"scale": 0.02},
+    {"scale": 0.05},
+    {"scale": 0.1},
+    {"scale": 0.2},
+    {"scale": 0.4}
+  ]
+}

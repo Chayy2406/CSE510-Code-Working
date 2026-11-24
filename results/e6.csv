@@ -1,0 +1,6 @@
+experiment,query,plan_id,plan_desc,dataset_id,seed,scale,key_dist,zipf_theta,corr,order,B,run,time_ms,page_reads,page_writes,reads_base,reads_index,reads_temp,writes_temp,buffer_hits,tuples_out,checksum,est_io,est_out_rows,ghj_overflow_partitions,oracle_ok,x_value
+e6,QA,bnlj_no_index,bnlj_no_index,ds1,7,0.1,uniform,1.0,0.0,random,15,0,27.7382,1050,0,1050,0,0,0,0,9431,0xc5d13def62e31441,1050.0,10000.0,0,True,1
+e6,QA,smj_no_index,smj_no_index,ds1,7,0.1,uniform,1.0,0.0,random,15,1,13.5932,866,547,319,0,547,547,37212,9431,0xc5d13def62e31441,1400.0,10000.0,0,True,2
+e6,QA,ghj_no_index,ghj_no_index,ds1,7,0.1,uniform,1.0,0.0,random,15,2,15.408,1713,1413,300,0,1413,1413,26365,9431,0xc5d13def62e31441,900.0,10000.0,0,True,3
+e6,QA,inlj_unclustered,inlj_unclustered,ds1,7,0.1,uniform,1.0,0.0,random,15,3,15.9708,15302,0,8933,6369,0,0,34990,9431,0xc5d13def62e31441,30250.0,10000.0,0,True,4
+e6,QA,inlj_clustered,inlj_clustered,ds2,7,0.1,uniform,1.0,0.0,sorted,15,4,6.37442,324,0,300,24,0,0,49990,9454,0x70f2416db0982029,30250.0,10000.0,0,True,5

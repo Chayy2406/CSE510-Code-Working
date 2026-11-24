@@ -1,0 +1,19 @@
+{
+  "experiment": "e3",
+  "description": "Join method vs. buffer size on three-table queries (QB, vary B x method)",
+  "query": "qb",
+  "repeats": 5,
+  "x_field": "buffer_pages",
+  "x_label": "Buffer pages (B)",
+  "dataset_defaults": {"seed": 7, "scale": 0.1, "key_dist": "uniform", "zipf_theta": 1.0, "corr": 0.0, "order": "random"},
+  "query_defaults": {"join_order": "order1", "pushdown": "on", "rmin": 4, "amax": 60, "color": 1,
+                      "d1": 1, "d2": 365},
+  "methods": ["bnlj", "smj", "ghj", "inlj"],
+  "points": [
+    {"buffer_pages": 5},
+    {"buffer_pages": 10},
+    {"buffer_pages": 20},
+    {"buffer_pages": 40},
+    {"buffer_pages": 80}
+  ]
+}

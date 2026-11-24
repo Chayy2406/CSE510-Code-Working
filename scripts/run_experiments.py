@@ -1,21 +1,32 @@
 #!/usr/bin/env python3
-"""Minimal experiment runner (PLAN.md Phase 6).
+"""Experiment runner (PLAN.md Phase 6 showcase table + Phase 9 E1..E6).
 
-Given one config JSON, this: generates data deterministically (gen_data),
-runs QA under each configured join method at a fixed buffer size (the
-"showcase" row set for Plan/Time/Reads/Writes), runs one method across a
-buffer-size sweep, oracle-checks every single run against SQLite, writes
-one CSV row per run (SPEC.md section 10's columns — est_io/est_out_rows
-are left blank until the cost estimator exists in a later phase), prints
-the four-row showcase table, and saves one sweep graph to figures/.
+Two config shapes are supported, auto-detected by the presence of a
+top-level "points" key:
 
-Usage: python3 scripts/run_experiments.py configs/qa_methods.json
+- Phase 6 shape (configs/smoke.json, configs/qa_methods.json): a single
+  dataset, a fixed-buffer showcase table across several QA join
+  methods, plus one buffer-size sweep. Unchanged since Phase 6.
+
+- Phase 9 shape (configs/e1.json..e6.json): a list of "points", each a
+  dict of overrides merged over "dataset_defaults" and "query_defaults".
+  Points that change scale/seed/key_dist/zipf_theta/corr/order/
+  cluster_by get a freshly generated dataset; points that only change
+  query-side fields (buffer_pages, methods, pushdown, ...) reuse the
+  same dataset already on disk. Every (point, method) combination is
+  run once with --explain on (free: it only adds console output, not
+  measured I/O — see docs/DECISIONS.md) and `repeats` times total,
+  discarding one warm-up run and reporting the median time
+  (SPEC.md section 10 methodology). Every run is oracle-checked.
+
+Usage: python3 scripts/run_experiments.py configs/e3.json
 Exits non-zero if any oracle check fails.
 """
 import csv
 import json
 import os
 import re
+import statistics
 import subprocess
 import sys
 
@@ -24,6 +35,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_plots as mp
 import oracle_check as oc
 
 CSV_FIELDS = [
@@ -31,20 +43,30 @@ CSV_FIELDS = [
     "key_dist", "zipf_theta", "corr", "order", "B", "run", "time_ms", "page_reads",
     "page_writes", "reads_base", "reads_index", "reads_temp", "writes_temp",
     "buffer_hits", "tuples_out", "checksum", "est_io", "est_out_rows",
-    "ghj_overflow_partitions", "oracle_ok",
+    "ghj_overflow_partitions", "oracle_ok", "x_value",
 ]
 
+DATASET_FIELDS = ["scale", "seed", "key_dist", "zipf_theta", "corr", "order", "cluster_by"]
 
-def run_query(run_query_bin, data_dir, method, buffer_pages, rmin, dmin):
+QUERY_FLAGS = {
+    "qa": ["method", "buffer_pages", "rmin", "dmin"],
+    "qb": ["join_order", "method1", "method2", "pushdown", "buffer_pages", "rmin", "amax",
+           "color", "d1", "d2"],
+    "qc": ["join_order", "method1", "method2", "pushdown", "buffer_pages", "rmin", "amax",
+           "color", "d1", "d2", "h"],
+    "qd": ["join_order", "method1", "method2", "pushdown", "buffer_pages", "rmin", "amax",
+           "color", "d1", "d2"],
+}
+
+
+# ---------------------------------------------------------------------
+# Phase 6 shape (unchanged)
+# ---------------------------------------------------------------------
+
+def run_query_qa(run_query_bin, data_dir, method, buffer_pages, rmin, dmin):
     out = subprocess.run(
-        [
-            run_query_bin,
-            "--data-dir", data_dir,
-            "--method", method,
-            "--buffer-pages", str(buffer_pages),
-            "--rmin", str(rmin),
-            "--dmin", str(dmin),
-        ],
+        [run_query_bin, "--data-dir", data_dir, "--method", method, "--buffer-pages",
+         str(buffer_pages), "--rmin", str(rmin), "--dmin", str(dmin)],
         capture_output=True, text=True, check=True,
     ).stdout
 
@@ -69,13 +91,7 @@ def run_query(run_query_bin, data_dir, method, buffer_pages, rmin, dmin):
     }
 
 
-def main():
-    if len(sys.argv) != 2:
-        print(f"usage: {sys.argv[0]} <config.json>", file=sys.stderr)
-        return 2
-    with open(sys.argv[1]) as f:
-        config = json.load(f)
-
+def run_phase6(config):
     gen_data_bin = config.get("gen_data_bin", "build/src/gen_data")
     run_query_bin = config.get("run_query_bin", "build/src/run_query")
     data_dir = config.get("data_dir", f"data/{config['dataset_id']}")
@@ -86,16 +102,10 @@ def main():
     os.makedirs(figures_dir, exist_ok=True)
 
     subprocess.run(
-        [
-            gen_data_bin,
-            "--out-dir", data_dir,
-            "--seed", str(config["seed"]),
-            "--scale", str(config["scale"]),
-            "--key-dist", config.get("key_dist", "uniform"),
-            "--zipf-theta", str(config.get("zipf_theta", 1.0)),
-            "--corr", str(config.get("corr", 0.0)),
-            "--order", config.get("order", "random"),
-        ],
+        [gen_data_bin, "--out-dir", data_dir, "--seed", str(config["seed"]), "--scale",
+         str(config["scale"]), "--key-dist", config.get("key_dist", "uniform"), "--zipf-theta",
+         str(config.get("zipf_theta", 1.0)), "--corr", str(config.get("corr", 0.0)), "--order",
+         config.get("order", "random")],
         check=True, capture_output=True, text=True,
     )
 
@@ -105,7 +115,7 @@ def main():
     all_rows = []
 
     def run_and_check(method, buffer_pages):
-        engine = run_query(run_query_bin, data_dir, method, buffer_pages, rmin, dmin)
+        engine = run_query_qa(run_query_bin, data_dir, method, buffer_pages, rmin, dmin)
         oracle_ok = (engine["tuples_out"] == oracle_rows and
                      engine["checksum"] == oracle_checksum)
         row = {
@@ -164,6 +174,186 @@ def main():
     all_ok = all(r["oracle_ok"] for r in all_rows)
     print(f"All oracle checks passed: {all_ok}")
     return 0 if all_ok else 1
+
+
+# ---------------------------------------------------------------------
+# Phase 9 shape: E1..E6
+# ---------------------------------------------------------------------
+
+def dataset_key(params):
+    return tuple(params.get(f) for f in DATASET_FIELDS)
+
+
+def gen_dataset(gen_data_bin, data_dir, params):
+    args = [
+        gen_data_bin, "--out-dir", data_dir,
+        "--seed", str(params["seed"]), "--scale", str(params["scale"]),
+        "--key-dist", params.get("key_dist", "uniform"),
+        "--zipf-theta", str(params.get("zipf_theta", 1.0)),
+        "--corr", str(params.get("corr", 0.0)),
+        "--order", params.get("order", "random"),
+    ]
+    if "cluster_by" in params:
+        args += ["--cluster-by", params["cluster_by"]]
+    subprocess.run(args, check=True, capture_output=True, text=True)
+
+
+def run_query_generic(run_query_bin, query, data_dir, params, flags):
+    args = [run_query_bin, "--query", query, "--data-dir", data_dir, "--explain", "on"]
+    for flag in flags:
+        if flag in params:
+            args += [f"--{flag.replace('_', '-')}", str(params[flag])]
+    out = subprocess.run(args, capture_output=True, text=True, check=True).stdout
+
+    def grab(pattern, cast=int, required=True):
+        m = re.search(pattern, out)
+        if m is None:
+            if required:
+                raise ValueError(f"run_query output missing '{pattern}':\n{out}")
+            return None
+        return cast(m.group(1))
+
+    return {
+        "time_ms": grab(r"Time: ([\d.]+)", float),
+        "page_reads": grab(r"Reads: (\d+)"),
+        "page_writes": grab(r"Writes: (\d+)"),
+        "reads_base": grab(r"ReadsBase: (\d+)"),
+        "reads_index": grab(r"ReadsIndex: (\d+)"),
+        "reads_temp": grab(r"ReadsTemp: (\d+)"),
+        "writes_temp": grab(r"WritesTemp: (\d+)"),
+        "buffer_hits": grab(r"BufferHits: (\d+)"),
+        "ghj_overflow_partitions": grab(r"GhjOverflowPartitions: (\d+)"),
+        "tuples_out": grab(r"Rows: (\d+)"),
+        "checksum": grab(r"Checksum: 0x([0-9a-f]+)", lambda s: int(s, 16)),
+        "order_ok": grab(r"OrderOk: (true|false)", lambda s: s == "true", required=False),
+        "est_io": grab(r"Total estimated I/O: ([\d.]+)", float, required=False),
+        "est_out_rows": grab(r"Est rows out: ([\d.]+)", float, required=False),
+    }
+
+
+def plan_label(params):
+    if "label" in params:
+        return params["label"]
+    if "method1" in params:
+        return f"{params['method1']}+{params['method2']}"
+    return str(params.get("method", "?"))
+
+
+def run_phase9(config):
+    gen_data_bin = config.get("gen_data_bin", "build/src/gen_data")
+    run_query_bin = config.get("run_query_bin", "build/src/run_query")
+    data_root = config.get("data_root", f"data/{config['experiment']}")
+    results_path = config.get("results_csv", f"results/{config['experiment']}.csv")
+    figures_dir = config.get("figures_dir", "figures")
+    query = config["query"]
+    flags = QUERY_FLAGS[query]
+    repeats = config.get("repeats", 5)
+
+    os.makedirs(os.path.dirname(results_path) or ".", exist_ok=True)
+    os.makedirs(figures_dir, exist_ok=True)
+
+    dataset_defaults = config.get("dataset_defaults", {})
+    query_defaults = config.get("query_defaults", {})
+    default_methods = config.get("methods")
+
+    dataset_cache = {}  # dataset_key -> (data_dir, dataset_id)
+    oracle_cache = {}  # data_dir -> (rows_or_rows_tuple, checksum)
+    all_rows = []
+    x_field = config.get("x_field", "B")
+
+    for point_idx, point in enumerate(config["points"]):
+        base = {**dataset_defaults, **query_defaults, **point}
+        key = dataset_key(base)
+        if key not in dataset_cache:
+            dataset_id = f"ds{len(dataset_cache) + 1}"
+            data_dir = os.path.join(data_root, dataset_id)
+            gen_dataset(gen_data_bin, data_dir, base)
+            dataset_cache[key] = (data_dir, dataset_id)
+        data_dir, dataset_id = dataset_cache[key]
+
+        if data_dir not in oracle_cache:
+            if query == "qa":
+                oracle_cache[data_dir] = oc.oracle_qa(data_dir, base["rmin"], base["dmin"])
+            elif query == "qc":
+                oracle_cache[data_dir] = oc.oracle_qc(data_dir, base["rmin"], base["amax"],
+                                                       base["color"], base["d1"], base["d2"],
+                                                       base.get("h", 0))
+            elif query == "qd":
+                _, rows, checksum = oc.oracle_qd(data_dir, base["rmin"], base["amax"],
+                                                  base["color"], base["d1"], base["d2"])
+                oracle_cache[data_dir] = (rows, checksum)
+            else:
+                oracle_cache[data_dir] = oc.oracle_qb(data_dir, base["rmin"], base["amax"],
+                                                       base["color"], base["d1"], base["d2"])
+        oracle_rows, oracle_checksum = oracle_cache[data_dir]
+
+        methods = point.get("methods", default_methods)
+        variants = [{}] if methods is None else [
+            ({"method": m} if query == "qa" else {"method1": m, "method2": m}) for m in methods
+        ]
+
+        for variant in variants:
+            params = {**base, **variant}
+            label = plan_label(params)
+
+            timings = []
+            last = None
+            for run_idx in range(repeats + 1):  # +1 warm-up, discarded
+                last = run_query_generic(run_query_bin, query, data_dir, params, flags)
+                if run_idx > 0:
+                    timings.append(last["time_ms"])
+            median_time = statistics.median(timings)
+
+            oracle_ok = last["tuples_out"] == oracle_rows and last["checksum"] == oracle_checksum
+            if query == "qd" and last["order_ok"] is False:
+                oracle_ok = False
+
+            row = {
+                "experiment": config["experiment"], "query": query.upper(), "plan_id": label,
+                "plan_desc": label, "dataset_id": dataset_id,
+                "seed": base.get("seed"), "scale": base.get("scale"),
+                "key_dist": base.get("key_dist", "uniform"),
+                "zipf_theta": base.get("zipf_theta", 1.0), "corr": base.get("corr", 0.0),
+                "order": base.get("order", "random"), "B": base.get("buffer_pages"),
+                "run": point_idx,
+                "time_ms": median_time, "page_reads": last["page_reads"],
+                "page_writes": last["page_writes"], "reads_base": last["reads_base"],
+                "reads_index": last["reads_index"], "reads_temp": last["reads_temp"],
+                "writes_temp": last["writes_temp"], "buffer_hits": last["buffer_hits"],
+                "tuples_out": last["tuples_out"], "checksum": f"0x{last['checksum']:x}",
+                "est_io": last["est_io"], "est_out_rows": last["est_out_rows"],
+                "ghj_overflow_partitions": last["ghj_overflow_partitions"],
+                "oracle_ok": oracle_ok,
+                "x_value": params.get(x_field, base.get(x_field)),
+            }
+            all_rows.append(row)
+            print(f"[{'OK' if oracle_ok else 'MISMATCH'}] point={point_idx} plan={label} "
+                  f"time={median_time:.2f}ms io={row['page_reads'] + row['page_writes']} "
+                  f"est_io={row['est_io']}")
+
+    with open(results_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(all_rows)
+    print(f"\nResults written to {results_path}")
+
+    mp.plot_experiment(config["experiment"], all_rows, config.get("x_label", x_field), figures_dir)
+
+    all_ok = all(r["oracle_ok"] for r in all_rows)
+    print(f"All oracle checks passed: {all_ok}")
+    return 0 if all_ok else 1
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"usage: {sys.argv[0]} <config.json>", file=sys.stderr)
+        return 2
+    with open(sys.argv[1]) as f:
+        config = json.load(f)
+
+    if "points" in config:
+        return run_phase9(config)
+    return run_phase6(config)
 
 
 if __name__ == "__main__":

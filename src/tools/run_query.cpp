@@ -160,6 +160,64 @@ int RunQA(int argc, char** argv) {
 
   qe::Projection projection(join, {"S.sid", "S.rating", "R.bid", "R.day"});
 
+  bool explain = Arg(argc, argv, "--explain", "off") == "on";
+  double estimated_io = 0;
+  if (explain) {
+    qe::Catalog catalog;
+    catalog.ComputeTableStats("S", s_heap, s_schema);
+    catalog.ComputeTableStats("R", r_heap, r_schema);
+    const qe::TableStats& s_stats = catalog.GetTableStats("S");
+    const qe::TableStats& r_stats = catalog.GetTableStats("R");
+
+    qe::CostEstimator est;
+    est.SetTable("S", s_stats.tuple_count, s_stats.page_count);
+    est.SetTable("R", r_stats.tuple_count, r_stats.page_count);
+    est.SetColumnStats("S.sid", s_stats.columns[0].min_value, s_stats.columns[0].max_value,
+                       s_stats.columns[0].distinct_count);
+    est.SetColumnStats("S.rating", s_stats.columns[1].min_value, s_stats.columns[1].max_value,
+                       s_stats.columns[1].distinct_count);
+    est.SetColumnStats("R.sid", r_stats.columns[0].min_value, r_stats.columns[0].max_value,
+                       r_stats.columns[0].distinct_count);
+    est.SetColumnStats("R.day", r_stats.columns[2].min_value, r_stats.columns[2].max_value,
+                       r_stats.columns[2].distinct_count);
+
+    double s_card = est.EstimateScanCardinality("S", {{"S.rating", qe::CompareOp::kGt, rmin}});
+    double r_card = est.EstimateScanCardinality("R", {{"R.day", qe::CompareOp::kGe, dmin}});
+    double join_card = qe::CostEstimator::EstimateJoinCardinality(
+        s_card, r_card, est.DistinctCount("S.sid"), est.DistinctCount("R.sid"));
+    double height = r_stats.tuple_count <= 1
+                        ? 1.0
+                        : std::ceil(std::log(s_stats.tuple_count) / std::log(300.0));
+    double c = std::max(1.0, height) + 1;
+    // The outer/inner roles swap for INLJ (R outer, S inner indexed); M,
+    // N, and the outer tuple count follow that same swap.
+    double M = (method == "inlj") ? r_stats.page_count : s_stats.page_count;
+    double N = (method == "inlj") ? s_stats.page_count : r_stats.page_count;
+    double outer_tuples = (method == "inlj") ? r_card : s_card;
+    estimated_io = qe::CostEstimator::IOForMethod(method, M, N, buffer_pages, outer_tuples, c);
+
+    std::vector<std::pair<std::string, double>> ranked;
+    for (const char* m : {"bnlj", "smj", "ghj", "inlj"}) {
+      double m_outer = (std::string(m) == "inlj") ? r_card : s_card;
+      double m_M = (std::string(m) == "inlj") ? r_stats.page_count : s_stats.page_count;
+      double m_N = (std::string(m) == "inlj") ? s_stats.page_count : r_stats.page_count;
+      ranked.push_back({m, qe::CostEstimator::IOForMethod(m, m_M, m_N, buffer_pages, m_outer, c)});
+    }
+    std::sort(ranked.begin(), ranked.end(), [](auto& x, auto& y) { return x.second < y.second; });
+    int rank = 1;
+    for (std::size_t i = 0; i < ranked.size(); ++i) {
+      if (ranked[i].first == method) rank = static_cast<int>(i) + 1;
+    }
+
+    std::cout << "Explain:\n";
+    std::cout << "  Scan S: est_rows=" << s_card << "\n";
+    std::cout << "  Scan R: est_rows=" << r_card << "\n";
+    std::cout << "  Join " << method << ": est_rows=" << join_card << " est_io=" << estimated_io
+               << " rank=" << rank << " of 4\n";
+    std::cout << "  Total estimated I/O: " << estimated_io << "\n";
+    std::cout << "  Est rows out: " << join_card << "\n";
+  }
+
   bp.Reset();  // start the measured run with a cold buffer pool
   qe::IoStats before = stats;
 
@@ -175,6 +233,11 @@ int RunQA(int argc, char** argv) {
                            std::to_string(rmin) + " AND R.day >= " + std::to_string(dmin) +
                            ", buffer_pages=" + std::to_string(buffer_pages);
   PrintResult(plan_desc, result, time_ms, stats, before);
+  if (explain) {
+    double measured_io = static_cast<double>((stats.page_reads - before.page_reads) +
+                                              (stats.page_writes - before.page_writes));
+    std::cout << "Measured/Estimated I/O ratio: " << (measured_io / estimated_io) << "\n";
+  }
   return 0;
 }
 
@@ -385,6 +448,7 @@ void PrintExplain(const QBArgs& a, const QBEstimate& e) {
   std::cout << "  Join2 " << a.method2 << ": est_rows=" << e.join2_card
             << " est_io=" << e.join2_io << " rank=" << e.join2_rank << " of 4\n";
   std::cout << "  Total estimated I/O: " << e.TotalIO() << "\n";
+  std::cout << "  Est rows out: " << e.join2_card << "\n";
 }
 
 int RunQB(int argc, char** argv) {

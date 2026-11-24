@@ -1,0 +1,17 @@
+{
+  "experiment": "e6",
+  "description": "How much do indexes and input order matter? (QA: index vs none, clustered vs unclustered)",
+  "query": "qa",
+  "repeats": 5,
+  "x_field": "scenario_x",
+  "x_label": "Scenario (see legend)",
+  "dataset_defaults": {"seed": 7, "scale": 0.1, "key_dist": "uniform", "zipf_theta": 1.0, "corr": 0.0},
+  "query_defaults": {"buffer_pages": 15, "rmin": 1, "dmin": 1},
+  "points": [
+    {"order": "random", "method": "bnlj", "label": "bnlj_no_index", "scenario_x": 1},
+    {"order": "random", "method": "smj", "label": "smj_no_index", "scenario_x": 2},
+    {"order": "random", "method": "ghj", "label": "ghj_no_index", "scenario_x": 3},
+    {"order": "random", "method": "inlj", "label": "inlj_unclustered", "scenario_x": 4},
+    {"order": "sorted", "cluster_by": "sid", "method": "inlj", "label": "inlj_clustered", "scenario_x": 5}
+  ]
+}
