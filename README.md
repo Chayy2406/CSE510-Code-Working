@@ -166,3 +166,4 @@ QC/QD plans against the SQLite oracle.
 
 This project used Claude Code throughout implementation. AI was not
 used to write report or proposal prose, per course policy.
+# CSE510-Code-Working
