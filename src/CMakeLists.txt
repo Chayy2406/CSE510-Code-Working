@@ -21,15 +21,18 @@ target_link_libraries(qe_gen PUBLIC qe_heap)
 add_executable(gen_data tools/gen_data.cpp)
 target_link_libraries(gen_data PRIVATE qe_gen qe_catalog qe_heap qe_storage)
 
+add_library(qe_index index/bplus_tree.cpp)
+target_link_libraries(qe_index PUBLIC qe_storage)
+
 add_library(qe_exec
   exec/external_sort.cpp
   exec/smj.cpp
   exec/ghj.cpp
 )
-target_link_libraries(qe_exec PUBLIC qe_heap)
+target_link_libraries(qe_exec PUBLIC qe_heap qe_index)
 
 add_library(qe_ref_executor tools/ref_executor.cpp)
 target_link_libraries(qe_ref_executor PUBLIC qe_heap)
 
 add_executable(run_query tools/run_query.cpp)
-target_link_libraries(run_query PRIVATE qe_exec qe_heap qe_storage)
+target_link_libraries(run_query PRIVATE qe_exec qe_heap qe_index qe_storage)

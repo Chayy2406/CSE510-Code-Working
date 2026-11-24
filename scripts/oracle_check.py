@@ -83,7 +83,7 @@ def main():
     parser.add_argument("--buffer-pages", type=int, default=10)
     parser.add_argument("--rmin", type=int, default=5)
     parser.add_argument("--dmin", type=int, default=1)
-    parser.add_argument("--method", default="bnlj", choices=["bnlj", "smj", "ghj"])
+    parser.add_argument("--method", default="bnlj", choices=["bnlj", "smj", "ghj", "inlj"])
     args = parser.parse_args()
 
     oracle_rows, oracle_checksum = oracle_qa(args.data_dir, args.rmin, args.dmin)

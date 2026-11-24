@@ -6,6 +6,7 @@
 #include "common/stats.h"
 #include "exec/bnlj.h"
 #include "exec/ghj.h"
+#include "exec/inlj.h"
 #include "exec/projection.h"
 #include "exec/selection.h"
 #include "exec/seq_scan.h"
@@ -13,6 +14,7 @@
 #include "exec/smj.h"
 #include "heap/heap_file.h"
 #include "heap/schema.h"
+#include "index/bplus_tree.h"
 #include "storage/buffer_pool.h"
 #include "storage/disk_manager.h"
 
@@ -65,8 +67,21 @@ int main(int argc, char** argv) {
   std::unique_ptr<qe::BNLJ> bnlj;
   std::unique_ptr<qe::SMJ> smj;
   std::unique_ptr<qe::GHJ> ghj;
+  std::unique_ptr<qe::INLJ> inlj;
+  std::unique_ptr<qe::Selection> inlj_post_filter;
+  qe::FileId s_idx_file = qe::kInvalidFileId;
+  std::unique_ptr<qe::BPlusTree> s_index;
   qe::Operator* join = nullptr;
   std::string plan_name;
+
+  if (method == "inlj") {
+    // Index build is a one-time setup step (SPEC.md section 12: "build
+    // indices and statistics" happens before "run all plans"), so it
+    // runs before bp.Reset() below and is not part of the measured I/O.
+    s_idx_file = dm.OpenFile(data_dir + "/S_sid.idx", qe::FileKind::kIndex);
+    s_index = std::make_unique<qe::BPlusTree>(&bp, &dm, s_idx_file);
+    s_heap.Scan([&](qe::Rid rid, const qe::Tuple& t) { s_index->Insert(t[0], rid); });
+  }
 
   if (method == "bnlj") {
     bnlj = std::make_unique<qe::BNLJ>(
@@ -93,8 +108,22 @@ int main(int argc, char** argv) {
                                      buffer_pages, &bp, &dm, data_dir + "/tmp_ghj", &stats);
     join = ghj.get();
     plan_name = "GHJ";
+  } else if (method == "inlj") {
+    // R (outer) lacks an index, so it drives the probe; S (inner) is
+    // indexed on sid. S.rating > rmin can't be pushed into the index
+    // lookup (the index is keyed on sid, not rating), so it is applied
+    // as a post-filter on INLJ's output instead (column 4: R has 3
+    // columns, so S.rating is outer_names.size() + 1 = 4).
+    inlj = std::make_unique<qe::INLJ>(&r_sel, 0, std::vector<std::string>{"R.sid", "R.bid", "R.day"},
+                                       s_index.get(), &s_heap,
+                                       std::vector<std::string>{"S.sid", "S.rating", "S.age"});
+    inlj_post_filter =
+        std::make_unique<qe::Selection>(inlj.get(), std::vector<qe::Predicate>{
+                                                          qe::Predicate{4, qe::CompareOp::kGt, rmin}});
+    join = inlj_post_filter.get();
+    plan_name = "INLJ";
   } else {
-    std::cerr << "run_query: unknown --method '" << method << "' (want bnlj|smj|ghj)\n";
+    std::cerr << "run_query: unknown --method '" << method << "' (want bnlj|smj|ghj|inlj)\n";
     return 1;
   }
 
@@ -110,7 +139,9 @@ int main(int argc, char** argv) {
   double time_ms =
       std::chrono::duration<double, std::milli>(end - start).count();
 
-  std::cout << "Plan: " << plan_name << "(S outer, R inner) on sid, "
+  std::string plan_shape = (method == "inlj") ? "R outer, S inner (indexed)"
+                                               : "S outer, R inner";
+  std::cout << "Plan: " << plan_name << "(" << plan_shape << ") on sid, "
             << "S.rating > " << rmin << " AND R.day >= " << dmin
             << ", buffer_pages=" << buffer_pages << "\n";
   std::cout << "Rows: " << result.row_count << "\n";
