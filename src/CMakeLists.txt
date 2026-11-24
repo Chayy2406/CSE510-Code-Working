@@ -34,8 +34,11 @@ target_link_libraries(qe_exec PUBLIC qe_heap qe_index)
 add_library(qe_ref_executor tools/ref_executor.cpp)
 target_link_libraries(qe_ref_executor PUBLIC qe_heap)
 
-add_library(qe_plan plan/plan_builder.cpp)
-target_link_libraries(qe_plan PUBLIC qe_exec qe_index)
+add_library(qe_plan
+  plan/plan_builder.cpp
+  plan/cost_estimator.cpp
+)
+target_link_libraries(qe_plan PUBLIC qe_exec qe_index qe_catalog)
 
 add_executable(run_query tools/run_query.cpp)
 target_link_libraries(run_query PRIVATE qe_plan qe_exec qe_heap qe_index qe_storage)

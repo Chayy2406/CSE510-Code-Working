@@ -26,4 +26,12 @@ std::vector<Tuple> ReferenceJoinQB(const std::vector<Tuple>& sailors,
                                     std::int32_t amax, std::int32_t color, std::int32_t d1,
                                     std::int32_t d2);
 
+// QC: QB's join and predicates, GROUP BY S.rating, HAVING COUNT(*) > h.
+// Output is (rating, count) pairs.
+std::vector<Tuple> ReferenceJoinQC(const std::vector<Tuple>& sailors,
+                                    const std::vector<Tuple>& reserves,
+                                    const std::vector<Tuple>& boats, std::int32_t rmin,
+                                    std::int32_t amax, std::int32_t color, std::int32_t d1,
+                                    std::int32_t d2, std::int32_t h);
+
 }  // namespace qe

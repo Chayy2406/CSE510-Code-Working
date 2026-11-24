@@ -74,6 +74,41 @@ def oracle_qb(data_dir, rmin, amax, color, d1, d2):
     return len(rows), checksum(rows)
 
 
+def oracle_qc(data_dir, rmin, amax, color, d1, d2, h):
+    conn = sqlite3.connect(":memory:")
+    load_csv(conn, "S", f"{data_dir}/S.csv", ["sid", "rating", "age"])
+    load_csv(conn, "R", f"{data_dir}/R.csv", ["sid", "bid", "day"])
+    load_csv(conn, "B", f"{data_dir}/B.csv", ["bid", "color"])
+    cur = conn.execute(
+        "SELECT S.rating, COUNT(*) FROM S JOIN R ON S.sid = R.sid JOIN B ON R.bid = B.bid "
+        "WHERE S.rating > ? AND S.age < ? AND B.color = ? AND R.day BETWEEN ? AND ? "
+        "GROUP BY S.rating HAVING COUNT(*) > ?",
+        (rmin, amax, color, d1, d2, h),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return len(rows), checksum(rows)
+
+
+def oracle_qd(data_dir, rmin, amax, color, d1, d2):
+    """Returns (rows_in_sid_order, row_count, checksum). Rows are kept so
+    callers can verify ordering, not just the order-insensitive checksum
+    (SPEC.md section 9: "for QD also verify ordering by S.sid")."""
+    conn = sqlite3.connect(":memory:")
+    load_csv(conn, "S", f"{data_dir}/S.csv", ["sid", "rating", "age"])
+    load_csv(conn, "R", f"{data_dir}/R.csv", ["sid", "bid", "day"])
+    load_csv(conn, "B", f"{data_dir}/B.csv", ["bid", "color"])
+    cur = conn.execute(
+        "SELECT S.sid, R.day, B.color FROM S JOIN R ON S.sid = R.sid JOIN B ON R.bid = B.bid "
+        "WHERE S.rating > ? AND S.age < ? AND B.color = ? AND R.day BETWEEN ? AND ? "
+        "ORDER BY S.sid",
+        (rmin, amax, color, d1, d2),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return rows, len(rows), checksum(rows)
+
+
 def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin, method):
     out = subprocess.run(
         [
