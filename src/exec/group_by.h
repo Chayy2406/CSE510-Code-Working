@@ -8,12 +8,6 @@
 
 namespace qe {
 
-// In-memory hash aggregate: COUNT(*) grouped by one column (SPEC.md
-// section 6/7, QC). SPEC.md explicitly calls out the hash-aggregate path
-// for a small group count (QC groups on S.rating: 10 groups) rather than
-// the sort-based alternative, which this project doesn't need and
-// doesn't implement (see docs/DECISIONS.md). HAVING is just a Selection
-// applied to this operator's output (column 1 is the count).
 class GroupBy : public Operator {
  public:
   GroupBy(Operator* child, const std::string& group_col, std::string count_alias = "count")
@@ -61,4 +55,4 @@ class GroupBy : public Operator {
   std::unordered_map<std::int32_t, std::int64_t>::iterator it_;
 };
 
-}  // namespace qe
+}

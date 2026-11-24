@@ -18,10 +18,10 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
 
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
   std::string path = TempPath("disk_manager.bin");
@@ -32,7 +32,6 @@ TEST_MAIN_BEGIN
     DiskManager dm(&stats);
     qe::FileId f = dm.OpenFile(path, FileKind::kBase);
 
-    // A freshly allocated, never-written page reads back as zeros.
     qe::PageNo p0 = dm.AllocatePage(f);
     CHECK_EQ(p0, 0);
     char buf[kPageSize];
@@ -45,7 +44,6 @@ TEST_MAIN_BEGIN
     }
     CHECK(all_zero);
 
-    // Write then read back round trip.
     char out[kPageSize];
     std::memset(out, 0, kPageSize);
     std::memcpy(out, "hello page", 10);
@@ -57,17 +55,15 @@ TEST_MAIN_BEGIN
     CHECK_EQ(stats.page_reads, 2);
     CHECK_EQ(std::memcmp(in, out, kPageSize), 0);
 
-    // Allocation is sequential; page count tracks it.
     qe::PageNo p1 = dm.AllocatePage(f);
     CHECK_EQ(p1, 1);
     CHECK_EQ(dm.PageCount(f), 2);
 
-    // Index and temp files bucket their reads separately.
     qe::FileId idx = dm.OpenFile(TempPath("disk_manager_idx.bin"), FileKind::kIndex);
     dm.AllocatePage(idx);
     dm.ReadPage(idx, 0, buf);
     CHECK_EQ(stats.reads_index, 1);
-    CHECK_EQ(stats.reads_base, 2);  // the two base-file reads earlier in this test
+    CHECK_EQ(stats.reads_base, 2);
 
     qe::FileId tmp = dm.OpenFile(TempPath("disk_manager_tmp.bin"), FileKind::kTemp);
     dm.AllocatePage(tmp);

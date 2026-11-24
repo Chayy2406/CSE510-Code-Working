@@ -7,8 +7,7 @@ join algorithms (block nested loop, index nested loop, sort-merge,
 Grace hash), a buffer pool with exact page-I/O counting, a paged B+
 tree, group-by/order-by, and a System-R-style cost estimator — built to
 compare measured query time and page I/O against analytical cost
-formulas across equivalent plans. See `docs/SPEC.md` for the full
-design and `docs/PLAN.md` for the phase-by-phase build log.
+formulas across equivalent plans.
 
 This README is everything needed to reproduce every number in the
 report from a fresh clone: no other steps, no absolute paths, fixed
@@ -125,15 +124,15 @@ measured fastest: N/M points` line — these are also in each CSV's
 `est_io`/`est_out_rows` columns, computed by `run_query --explain`
 (`src/plan/cost_estimator.{h,cpp}`).
 
-Scope decisions for these six configs (each logged in full in
-`docs/DECISIONS.md`): E1 sweeps QA only, not all four queries; E2/E3/E5
-fix `method1 == method2` (the same join algorithm for both of QB's
-joins) rather than all 16 method-pair combinations; E6's varying
-"factor" is a categorical scenario (not a continuous sweep). These keep
-each experiment's runtime small while still answering its SPEC.md
-section 11 question; none of them are a correctness limitation — Phase
-7 already verified all 64 (order x method-pair x pushdown) QB plans
-and all 64 QC/QD plans against the SQLite oracle.
+Scope decisions for these six configs: E1 sweeps QA only, not all four
+queries; E2/E3/E5 fix `method1 == method2` (the same join algorithm for
+both of QB's joins) rather than all 16 method-pair combinations; E6's
+varying "factor" is a categorical scenario (not a continuous sweep).
+These keep each experiment's runtime small while still answering its
+question; none of them are a correctness limitation —
+`scripts/check_qb_plans.py` and `scripts/check_qcd_plans.py` separately
+verify all 64 (order x method-pair x pushdown) QB plans and all 64
+QC/QD plans against the SQLite oracle.
 
 ## Hardware and settings used for the reported numbers
 
@@ -147,21 +146,23 @@ and all 64 QC/QD plans against the SQLite oracle.
   Experiments E1-E6 use smaller scales (0.02-0.4) to keep total runtime
   short; `configs/qa_methods.json` and ad hoc `run_query` runs were also
   verified to match the SQLite oracle at full base scale (scale=1.0).
-- Timing caveat (SPEC.md section 3): wall-clock time reflects the OS
-  page cache plus CPU cost, not raw disk latency — page I/O counts are
-  exact and are the primary metric for comparing plans.
+- Timing caveat: wall-clock time reflects the OS page cache plus CPU
+  cost, not raw disk latency — page I/O counts are exact and are the
+  primary metric for comparing plans.
 
 ## Repository layout
 
-See `docs/SPEC.md` section 2. In brief: `src/` (engine), `tests/` (one
-executable per module), `scripts/` (Python pipeline), `configs/`
-(experiment JSON), `data/` (generated, gitignored), `results/` (CSV,
-tracked), `figures/` (PNG, tracked), `docs/` (SPEC, plan, decisions, AI
-usage log).
+- `src/` — the engine (storage, heap files, indexes, operators, joins,
+  plan builder, cost estimator, CLI tools)
+- `tests/` — one plain-assert test executable per module
+- `scripts/` — the Python pipeline (data generation driver, oracle
+  checks, experiment runner, plotting, `run_all.sh`)
+- `configs/` — experiment JSON (`smoke`, `qa_methods`, `e1`..`e6`)
+- `data/` — generated data (gitignored, regenerated on demand)
+- `results/` — experiment CSVs (tracked)
+- `figures/` — experiment graphs (tracked)
 
 ## AI usage
 
-This project used Claude Code throughout implementation (every
-component's provenance is logged in `docs/AI_USAGE.md`, with students'
-own review notes alongside). AI was not used to write report or
-proposal prose, per course policy.
+This project used Claude Code throughout implementation. AI was not
+used to write report or proposal prose, per course policy.

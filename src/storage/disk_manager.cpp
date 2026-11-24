@@ -20,9 +20,7 @@ FileId DiskManager::OpenFile(const std::string& path, FileKind kind) {
     throw std::system_error(errno, std::generic_category(),
                              "DiskManager::OpenFile: " + path);
   }
-  // page_count must reflect pages already on disk (a page_count of 0 for
-  // an existing file would make every reader of it think the file is
-  // empty), not just pages allocated through this DiskManager instance.
+
   off_t size = lseek(fd, 0, SEEK_END);
   if (size < 0) {
     throw std::system_error(errno, std::generic_category(),
@@ -67,8 +65,7 @@ void DiskManager::ReadPage(FileId file, PageNo page_no, char* buf) {
     throw std::system_error(errno, std::generic_category(),
                              "DiskManager::ReadPage");
   }
-  // A page that was allocated but never written (a hole) reads as zeros;
-  // pread may return fewer than kPageSize bytes past EOF.
+
   if (static_cast<std::size_t>(n) < kPageSize) {
     std::fill(buf + n, buf + kPageSize, 0);
   }
@@ -108,4 +105,4 @@ void DiskManager::CloseFile(FileId file) {
   }
 }
 
-}  // namespace qe
+}

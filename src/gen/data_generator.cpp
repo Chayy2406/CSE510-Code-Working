@@ -14,8 +14,6 @@ std::int32_t Clamp(double v, std::int32_t lo, std::int32_t hi) {
   return static_cast<std::int32_t>(r);
 }
 
-// Builds a Zipfian distribution over ranks [0, n): weight(i) = 1 / (i+1)^theta.
-// theta == 0 degenerates to uniform.
 std::discrete_distribution<std::size_t> MakeZipf(std::size_t n, double theta) {
   std::vector<double> weights(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -24,7 +22,7 @@ std::discrete_distribution<std::size_t> MakeZipf(std::size_t n, double theta) {
   return std::discrete_distribution<std::size_t>(weights.begin(), weights.end());
 }
 
-}  // namespace
+}
 
 std::vector<Tuple> DataGenerator::GenerateSailors(std::size_t count) {
   std::uniform_int_distribution<std::int32_t> age_dist(16, 70);
@@ -98,4 +96,4 @@ std::vector<Tuple> DataGenerator::ApplyOrder(std::vector<Tuple> tuples,
   return tuples;
 }
 
-}  // namespace qe
+}

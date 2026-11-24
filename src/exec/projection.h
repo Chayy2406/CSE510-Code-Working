@@ -7,8 +7,6 @@
 
 namespace qe {
 
-// Pipelined projection: keeps only `keep_columns`, resolved by name
-// against the child's output schema at construction time.
 class Projection : public Operator {
  public:
   Projection(Operator* child, std::vector<std::string> keep_columns)
@@ -46,4 +44,4 @@ class Projection : public Operator {
   std::vector<std::size_t> indices_;
 };
 
-}  // namespace qe
+}

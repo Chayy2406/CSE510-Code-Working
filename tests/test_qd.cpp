@@ -22,9 +22,9 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
   constexpr std::size_t kTupleBytes = 1024;
@@ -106,7 +106,7 @@ TEST_MAIN_BEGIN
         builder.BindIndex("B", "B.bid", &b_index);
 
         auto tree =
-            BuildQBPlan(order, method1, method2, /*pushdown=*/true, kRmin, kAmax, kColor, kD1, kD2);
+            BuildQBPlan(order, method1, method2,  true, kRmin, kAmax, kColor, kD1, kD2);
         Operator* top = builder.Build(*tree);
 
         bool free_order = (order == "order2" && method2 == "smj");
@@ -137,7 +137,6 @@ TEST_MAIN_BEGIN
         while (proj.Next(&t)) actual.push_back(t);
         proj.Close();
 
-        // Ordering: non-decreasing S.sid (column 0 of the projection).
         bool sorted = std::is_sorted(actual.begin(), actual.end(),
                                       [](const Tuple& a, const Tuple& b) { return a[0] < b[0]; });
         if (!sorted) {
@@ -146,7 +145,6 @@ TEST_MAIN_BEGIN
         }
         CHECK(sorted);
 
-        // Content: same multiset as QB (order-independent check).
         std::vector<Tuple> actual_sorted = actual;
         std::sort(actual_sorted.begin(), actual_sorted.end());
         if (actual_sorted != expected_set) {
@@ -158,7 +156,7 @@ TEST_MAIN_BEGIN
     }
   }
   CHECK(plan_count >= 12);
-  CHECK(saw_free_order);  // the free-delivery path must actually be exercised
+  CHECK(saw_free_order);
 
   for (const std::string& p : {s_path, r_path, b_path, s_idx_path, b_idx_path}) {
     std::filesystem::remove(p);

@@ -5,8 +5,6 @@
 
 namespace qe {
 
-// Pipelined filter over any child operator. Used when predicates are not
-// pushed into the scan (pushdown off) or when they apply after a join.
 class Selection : public Operator {
  public:
   Selection(Operator* child, std::vector<Predicate> predicates)
@@ -32,4 +30,4 @@ class Selection : public Operator {
   std::vector<Predicate> predicates_;
 };
 
-}  // namespace qe
+}

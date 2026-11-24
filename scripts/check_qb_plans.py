@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Checks QB against the SQLite oracle under many distinct plans.
-
-PLAN.md Phase 7 acceptance: "QB matches SQLite under at least 12 distinct
-plans, including all four join methods at least once." Computes the QB
-oracle once, then runs run_query --query qb over every (join_order,
-method1, method2, pushdown) combination, comparing each to the oracle.
-Exits non-zero if any plan mismatches.
-"""
 import argparse
 import itertools
 import re
@@ -19,7 +11,6 @@ import oracle_check as oc
 METHODS = ["bnlj", "smj", "ghj", "inlj"]
 ORDERS = ["order1", "order2"]
 PUSHDOWNS = ["on", "off"]
-
 
 def run_qb(run_query_bin, data_dir, join_order, method1, method2, pushdown, buffer_pages,
            rmin, amax, color, d1, d2):
@@ -44,7 +35,6 @@ def run_qb(run_query_bin, data_dir, join_order, method1, method2, pushdown, buff
     rows = int(re.search(r"Rows: (\d+)", out).group(1))
     checksum_hex = re.search(r"Checksum: 0x([0-9a-f]+)", out).group(1)
     return rows, int(checksum_hex, 16)
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -90,7 +80,6 @@ def main():
         return 1
     print("All QB plans match the SQLite oracle.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

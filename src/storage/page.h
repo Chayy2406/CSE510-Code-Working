@@ -6,9 +6,6 @@
 
 namespace qe {
 
-// One fixed-size page of raw bytes. Layout of the bytes (heap header,
-// B+ tree node, etc.) is interpreted by the layer above; the buffer pool
-// only moves bytes.
 class Page {
  public:
   static constexpr std::size_t kSize = kPageSize;
@@ -22,4 +19,4 @@ class Page {
   char data_[kSize]{};
 };
 
-}  // namespace qe
+}

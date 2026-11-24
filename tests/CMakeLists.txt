@@ -1,5 +1,3 @@
-# Each test is its own executable (no GoogleTest): plain assert-style
-# checks via test_util.h, registered individually with CTest.
 function(add_qe_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

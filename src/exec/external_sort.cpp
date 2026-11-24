@@ -4,10 +4,6 @@
 
 namespace qe {
 
-// ---------------------------------------------------------------------
-// FusedMerge
-// ---------------------------------------------------------------------
-
 FusedMerge::FusedMerge(SortedRunSet runs, std::vector<std::string> schema)
     : runs_(std::move(runs)), schema_(std::move(schema)) {}
 
@@ -64,10 +60,6 @@ bool FusedMerge::Next(Tuple* out) {
   return true;
 }
 
-// ---------------------------------------------------------------------
-// ExternalSort
-// ---------------------------------------------------------------------
-
 ExternalSort::ExternalSort(Operator* child, std::size_t sort_col,
                             const Schema* temp_schema,
                             std::vector<std::string> output_names,
@@ -85,12 +77,7 @@ ExternalSort::ExternalSort(Operator* child, std::size_t sort_col,
 HeapFile* ExternalSort::NewTempHeap(const std::string& suffix) {
   std::string path =
       temp_path_prefix_ + "_" + suffix + "_" + std::to_string(temp_counter_++);
-  // Temp files are always meant to start empty. Without this, reusing the
-  // same temp_path_prefix across two separate ExternalSort invocations
-  // (e.g. the same query run twice, or SMJ/GHJ invoked more than once in
-  // a process) would make the new run see the previous run's leftover
-  // pages as already-allocated and append on top of them instead of
-  // starting fresh, corrupting the sort.
+
   std::filesystem::remove(path);
   FileId file = dm_->OpenFile(path, FileKind::kTemp);
   heap_files_.push_back(std::make_unique<HeapFile>(bp_, dm_, file, temp_schema_));
@@ -158,27 +145,18 @@ SortedRunSet ExternalSort::MergePass(const SortedRunSet& input, std::size_t fan_
 
 SortedRunSet ExternalSort::PrepareSortedRuns(std::size_t max_runs) {
   SortedRunSet current = FormRuns();
-  // Flush run formation's output now rather than leaving it to whatever
-  // eviction happens to occur next: run formation's "P writes" must be
-  // attributed to run formation itself, not folded into (or hidden by)
-  // unrelated eviction pressure from whatever else shares this pool.
+
   bp_->FlushAll();
 
-  // fan_in must be at least 2: merging groups of 1 run leaves the run
-  // count unchanged, so the loop below would never terminate.
   std::size_t fan_in = buffer_pages_ > 2 ? buffer_pages_ - 1 : 2;
   while (current.runs.size() > max_runs) {
     HeapFile* superseded = current.heap;
     current = MergePass(current, fan_in);
-    // Bounds the number of simultaneously open temp files across a long
-    // chain of merge passes (otherwise a tiny buffer_pages forces enough
-    // passes to exhaust the process's fd limit). Flush first: a page of
-    // `superseded` may still be dirty and resident if it was never
-    // evicted before this pass finished reading it.
+
     bp_->FlushAll();
     dm_->CloseFile(superseded->Id());
   }
   return current;
 }
 
-}  // namespace qe
+}

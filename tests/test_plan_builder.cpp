@@ -23,13 +23,13 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
 
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
-  constexpr std::size_t kTupleBytes = 1024;  // forces multiple pages at small scale
+  constexpr std::size_t kTupleBytes = 1024;
   constexpr std::int32_t kNumSailors = 15;
   constexpr std::int32_t kNumBoats = 8;
   constexpr std::int32_t kNumReserves = 60;
@@ -61,7 +61,7 @@ TEST_MAIN_BEGIN
   std::vector<Tuple> expected =
       ReferenceJoinQB(sailors, reserves, boats, kRmin, kAmax, kColor, kD1, kD2);
   std::sort(expected.begin(), expected.end());
-  CHECK(!expected.empty());  // the test is meaningless if nothing matches
+  CHECK(!expected.empty());
 
   std::string s_path = TempPath("plan_s.bin");
   std::string r_path = TempPath("plan_r.bin");
@@ -108,7 +108,7 @@ TEST_MAIN_BEGIN
           methods_seen.insert(method1);
           methods_seen.insert(method2);
 
-          PlanBuilder builder(&bp, &dm, /*buffer_pages=*/8,
+          PlanBuilder builder(&bp, &dm,  8,
                                TempPath("plan_work") + "_" + std::to_string(plan_count), &stats);
           builder.BindTable("S", &s_heap, {"S.sid", "S.rating", "S.age"});
           builder.BindTable("R", &r_heap, {"R.sid", "R.bid", "R.day"});
@@ -139,8 +139,6 @@ TEST_MAIN_BEGIN
     }
   }
 
-  // SPEC.md/PLAN.md Phase 7 acceptance: at least 12 distinct plans,
-  // including all four join methods at least once.
   CHECK(plan_count >= 12);
   CHECK_EQ(methods_seen.size(), methods.size());
 

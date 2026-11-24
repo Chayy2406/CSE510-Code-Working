@@ -32,8 +32,6 @@ void WriteCsv(const std::string& path, const qe::Schema& schema,
   }
 }
 
-// Generates one table end to end: build tuples, apply physical order,
-// append to a fresh heap file, write the CSV, and report its stats.
 void BuildTable(const std::string& name, qe::BufferPool* bp, qe::DiskManager* dm,
                  const std::string& dir, const qe::Schema& schema,
                  std::vector<Tuple> tuples, std::size_t order_key_col,
@@ -64,7 +62,7 @@ std::string Arg(int argc, char** argv, const std::string& flag,
   return def;
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
   qe::GenConfig config;
@@ -87,7 +85,7 @@ int main(int argc, char** argv) {
 
   qe::IoStats io_stats;
   qe::DiskManager dm(&io_stats);
-  qe::BufferPool bp(&dm, /*num_frames=*/64, &io_stats);
+  qe::BufferPool bp(&dm,  64, &io_stats);
   qe::DataGenerator gen(config);
   qe::Catalog catalog;
 
@@ -109,11 +107,6 @@ int main(int argc, char** argv) {
              gen.GenerateReserves(num_reserves, num_sailors, num_boats),
              reserves_key_col, &gen, &catalog);
 
-  // Without this, whichever pages are still dirty and resident when `bp`
-  // is destroyed are silently lost: BufferPool has no flush-on-destroy.
-  // (It happened to work before this call existed only because the stats
-  // scan right after each table's generation cascades an LRU eviction
-  // that flushes everything as a side effect — not something to rely on.)
   bp.FlushAll();
 
   return 0;

@@ -17,7 +17,7 @@ void WriteTupleCount(Page* page, std::int32_t count) {
   std::memcpy(page->Data(), &count, sizeof(count));
 }
 
-}  // namespace
+}
 
 HeapFile::HeapFile(BufferPool* bp, DiskManager* dm, FileId file,
                     const Schema* schema)
@@ -37,7 +37,7 @@ HeapFile::HeapFile(BufferPool* bp, DiskManager* dm, FileId file,
     last_page_no_ = static_cast<PageNo>(page_count_ - 1);
     Page* page = bp_->Fetch(file_, last_page_no_);
     last_page_count_ = ReadTupleCount(page);
-    bp_->Unpin(file_, last_page_no_, /*dirty=*/false);
+    bp_->Unpin(file_, last_page_no_,  false);
   }
 }
 
@@ -72,7 +72,7 @@ Rid HeapFile::Append(const Tuple& tuple) {
   ++last_page_count_;
   WriteTupleCount(page, last_page_count_);
 
-  bp_->Unpin(file_, last_page_no_, /*dirty=*/true);
+  bp_->Unpin(file_, last_page_no_,  true);
   return rid;
 }
 
@@ -135,4 +135,4 @@ bool HeapFile::NextTuple(PageNo* page_no, std::int32_t* slot, Tuple* out) const 
   return false;
 }
 
-}  // namespace qe
+}

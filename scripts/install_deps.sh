@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Checks for the tools this project needs and installs the one
-# dependency that's actually optional-but-missing (matplotlib). Does
-# not install a C++ compiler, CMake, or Python 3 itself — those are
-# expected to already be present (Xcode Command Line Tools on macOS,
-# build-essential + cmake on Linux).
 set -euo pipefail
 
 missing=0

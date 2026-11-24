@@ -23,9 +23,9 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
   constexpr std::size_t kTupleBytes = 1024;
@@ -37,7 +37,7 @@ TEST_MAIN_BEGIN
   constexpr std::int32_t kColor = 1;
   constexpr std::int32_t kD1 = 50;
   constexpr std::int32_t kD2 = 300;
-  constexpr std::int32_t kH = 1;  // HAVING COUNT(*) > 1
+  constexpr std::int32_t kH = 1;
 
   std::mt19937 rng(99);
   std::uniform_int_distribution<std::int32_t> rating_dist(1, 10);

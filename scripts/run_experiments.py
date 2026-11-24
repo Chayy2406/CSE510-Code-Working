@@ -1,27 +1,4 @@
 #!/usr/bin/env python3
-"""Experiment runner (PLAN.md Phase 6 showcase table + Phase 9 E1..E6).
-
-Two config shapes are supported, auto-detected by the presence of a
-top-level "points" key:
-
-- Phase 6 shape (configs/smoke.json, configs/qa_methods.json): a single
-  dataset, a fixed-buffer showcase table across several QA join
-  methods, plus one buffer-size sweep. Unchanged since Phase 6.
-
-- Phase 9 shape (configs/e1.json..e6.json): a list of "points", each a
-  dict of overrides merged over "dataset_defaults" and "query_defaults".
-  Points that change scale/seed/key_dist/zipf_theta/corr/order/
-  cluster_by get a freshly generated dataset; points that only change
-  query-side fields (buffer_pages, methods, pushdown, ...) reuse the
-  same dataset already on disk. Every (point, method) combination is
-  run once with --explain on (free: it only adds console output, not
-  measured I/O — see docs/DECISIONS.md) and `repeats` times total,
-  discarding one warm-up run and reporting the median time
-  (SPEC.md section 10 methodology). Every run is oracle-checked.
-
-Usage: python3 scripts/run_experiments.py configs/e3.json
-Exits non-zero if any oracle check fails.
-"""
 import csv
 import json
 import os
@@ -58,11 +35,6 @@ QUERY_FLAGS = {
            "color", "d1", "d2"],
 }
 
-
-# ---------------------------------------------------------------------
-# Phase 6 shape (unchanged)
-# ---------------------------------------------------------------------
-
 def run_query_qa(run_query_bin, data_dir, method, buffer_pages, rmin, dmin):
     out = subprocess.run(
         [run_query_bin, "--data-dir", data_dir, "--method", method, "--buffer-pages",
@@ -89,7 +61,6 @@ def run_query_qa(run_query_bin, data_dir, method, buffer_pages, rmin, dmin):
         "tuples_out": grab(r"Rows: (\d+)"),
         "checksum": grab(r"Checksum: 0x([0-9a-f]+)", lambda s: int(s, 16)),
     }
-
 
 def run_phase6(config):
     gen_data_bin = config.get("gen_data_bin", "build/src/gen_data")
@@ -175,14 +146,8 @@ def run_phase6(config):
     print(f"All oracle checks passed: {all_ok}")
     return 0 if all_ok else 1
 
-
-# ---------------------------------------------------------------------
-# Phase 9 shape: E1..E6
-# ---------------------------------------------------------------------
-
 def dataset_key(params):
     return tuple(params.get(f) for f in DATASET_FIELDS)
-
 
 def gen_dataset(gen_data_bin, data_dir, params):
     args = [
@@ -196,7 +161,6 @@ def gen_dataset(gen_data_bin, data_dir, params):
     if "cluster_by" in params:
         args += ["--cluster-by", params["cluster_by"]]
     subprocess.run(args, check=True, capture_output=True, text=True)
-
 
 def run_query_generic(run_query_bin, query, data_dir, params, flags):
     args = [run_query_bin, "--query", query, "--data-dir", data_dir, "--explain", "on"]
@@ -230,14 +194,12 @@ def run_query_generic(run_query_bin, query, data_dir, params, flags):
         "est_out_rows": grab(r"Est rows out: ([\d.]+)", float, required=False),
     }
 
-
 def plan_label(params):
     if "label" in params:
         return params["label"]
     if "method1" in params:
         return f"{params['method1']}+{params['method2']}"
     return str(params.get("method", "?"))
-
 
 def run_phase9(config):
     gen_data_bin = config.get("gen_data_bin", "build/src/gen_data")
@@ -256,8 +218,8 @@ def run_phase9(config):
     query_defaults = config.get("query_defaults", {})
     default_methods = config.get("methods")
 
-    dataset_cache = {}  # dataset_key -> (data_dir, dataset_id)
-    oracle_cache = {}  # data_dir -> (rows_or_rows_tuple, checksum)
+    dataset_cache = {}
+    oracle_cache = {}
     all_rows = []
     x_field = config.get("x_field", "B")
 
@@ -298,7 +260,7 @@ def run_phase9(config):
 
             timings = []
             last = None
-            for run_idx in range(repeats + 1):  # +1 warm-up, discarded
+            for run_idx in range(repeats + 1):
                 last = run_query_generic(run_query_bin, query, data_dir, params, flags)
                 if run_idx > 0:
                     timings.append(last["time_ms"])
@@ -343,7 +305,6 @@ def run_phase9(config):
     print(f"All oracle checks passed: {all_ok}")
     return 0 if all_ok else 1
 
-
 def main():
     if len(sys.argv) != 2:
         print(f"usage: {sys.argv[0]} <config.json>", file=sys.stderr)
@@ -354,7 +315,6 @@ def main():
     if "points" in config:
         return run_phase9(config)
     return run_phase6(config)
-
 
 if __name__ == "__main__":
     sys.exit(main())

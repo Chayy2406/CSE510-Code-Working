@@ -48,8 +48,7 @@ Tuple GHJ::Combine(const Tuple& l, const Tuple& r) const {
 HeapFile* GHJ::NewTempHeap(const Schema* schema, const std::string& suffix) {
   std::string path = temp_path_prefix_ + "_ghj_" + suffix + "_" +
                       std::to_string(temp_counter_++);
-  // See the identical comment in ExternalSort::NewTempHeap: temp files
-  // must always start empty.
+
   std::filesystem::remove(path);
   FileId file = dm_->OpenFile(path, FileKind::kTemp);
   heap_files_.push_back(std::make_unique<HeapFile>(bp_, dm_, file, schema));
@@ -213,10 +212,6 @@ void GHJ::ProcessNextPending() {
     for (auto& sp : sub) pending_.push_back(sp);
   }
 
-  // p's two partition files are never needed again once this call
-  // returns (either fully joined/fallback-joined, or re-partitioned into
-  // fresh sub-partition files) — close them to bound the number of
-  // simultaneously open temp files across a deep/wide partition tree.
   bp_->FlushAll();
   dm_->CloseFile(p.left_heap->Id());
   dm_->CloseFile(p.right_heap->Id());
@@ -248,4 +243,4 @@ void GHJ::Close() {
   heap_files_.clear();
 }
 
-}  // namespace qe
+}

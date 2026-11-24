@@ -8,18 +8,6 @@
 
 namespace qe {
 
-// Sort-merge join (SPEC.md section 6). Both inputs are sorted via
-// ExternalSort down to at most (buffer_pages - 1) runs each, then joined
-// by a fused final merge (no extra materialize/read pair). Many-to-many
-// duplicate keys are handled by buffering the left side's duplicate
-// group in memory; if a group exceeds one run's worth of tuples, it
-// spills to a temp heap file and is rescanned per matching right tuple
-// instead of held unbounded in memory.
-//
-// Deviation from SPEC.md: "skipping a sort if the input is already
-// ordered" is not implemented — both sides are always sorted. Deciding
-// when an input is already ordered is the plan builder's job (Phase 7),
-// which doesn't exist yet; see docs/DECISIONS.md.
 class SMJ : public Operator {
  public:
   SMJ(Operator* left, std::size_t left_col, const Schema* left_temp_schema,
@@ -75,4 +63,4 @@ class SMJ : public Operator {
   std::size_t output_pos_ = 0;
 };
 
-}  // namespace qe
+}

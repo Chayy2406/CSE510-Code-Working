@@ -9,37 +9,19 @@
 
 namespace qe {
 
-// A heap file of fixed-width tuples, packed back-to-back after a small
-// per-page header (one int32 tuple count). All page access goes through
-// the BufferPool, so every real read/write is counted there (SPEC.md
-// section 4). Appends are sequential; there is no delete, matching the
-// read-mostly, generate-once workload of this project.
 class HeapFile {
  public:
-  // bp and dm must outlive this HeapFile. `file` must already be open in
-  // dm (via DiskManager::OpenFile), either freshly created or an existing
-  // heap file written by a previous HeapFile on the same layout.
+
   HeapFile(BufferPool* bp, DiskManager* dm, FileId file, const Schema* schema);
 
-  // Appends one tuple, allocating a new page if the current last page is
-  // full. tuple.size() must equal schema->NumColumns().
   Rid Append(const Tuple& tuple);
 
-  // Reads back the tuple at rid.
   Tuple Fetch(Rid rid) const;
 
-  // Calls fn(rid, tuple) for every tuple currently in the file, in
-  // (page_no, slot) order.
   void Scan(const std::function<void(Rid, const Tuple&)>& fn) const;
 
-  // Calls fn(rid, tuple) for every tuple on one page. Lets a blocked join
-  // read a specific page range without re-scanning the whole file.
   void ScanPage(PageNo page_no, const std::function<void(Rid, const Tuple&)>& fn) const;
 
-  // Pull-based cursor for an iterator-style scan (used by the SeqScan
-  // operator). Caller owns (page_no, slot), initialized to {0, 0} before
-  // the first call. Returns false and leaves *out untouched once the file
-  // is exhausted.
   bool NextTuple(PageNo* page_no, std::int32_t* slot, Tuple* out) const;
 
   std::size_t NumPages() const { return page_count_; }
@@ -56,9 +38,9 @@ class HeapFile {
   std::size_t tuple_bytes_;
   std::size_t tuples_per_page_;
 
-  std::size_t page_count_;       // total pages ever allocated for this file
-  PageNo last_page_no_;          // kInvalidPageNo if the file is empty
-  std::int32_t last_page_count_; // tuples currently in last_page_no_
+  std::size_t page_count_;
+  PageNo last_page_no_;
+  std::int32_t last_page_count_;
 };
 
-}  // namespace qe
+}

@@ -6,12 +6,6 @@
 
 namespace qe {
 
-// B+ tree range (or equality, lo == hi) scan, fetching the matching data
-// tuple for each Rid the index returns (SPEC.md section 6). An
-// unclustered table costs one data-page fetch per matching Rid; a table
-// physically sorted on the index key gets that "for free" as repeated
-// cache hits on the same resident page, with no special-case code needed
-// here (BufferPool already keeps recently-touched pages resident).
 class IndexScan : public Operator {
  public:
   IndexScan(BPlusTree* index, HeapFile* heap, std::vector<std::string> schema,
@@ -44,4 +38,4 @@ class IndexScan : public Operator {
   std::size_t pos_ = 0;
 };
 
-}  // namespace qe
+}

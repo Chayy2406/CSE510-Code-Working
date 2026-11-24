@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Checks run_query's QA output against a SQLite oracle over the same CSVs.
-
-Loads S.csv and R.csv from a data directory into an in-memory SQLite
-database, runs the SQL equivalent of QA with the given constants, and
-computes the same order-insensitive checksum the engine computes
-(src/exec/checksum.h) over the oracle's rows. Then runs run_query with
-matching constants, parses its printed row count and checksum, and
-compares. Exits non-zero (and prints what differed) on any mismatch.
-"""
 import argparse
 import csv
 import re
@@ -19,22 +10,18 @@ MASK64 = (1 << 64) - 1
 FNV_OFFSET = 0xcbf29ce484222325
 FNV_PRIME = 0x100000001b3
 
-
 def tuple_hash(values):
-    """Must match qe::TupleHash in src/exec/checksum.h exactly."""
     h = FNV_OFFSET
     for v in values:
         h ^= v & 0xFFFFFFFF
         h = (h * FNV_PRIME) & MASK64
     return h
 
-
 def checksum(rows):
     total = 0
     for row in rows:
         total = (total + tuple_hash(row)) & MASK64
     return total
-
 
 def load_csv(conn, table, path, columns):
     conn.execute(f"CREATE TABLE {table} ({', '.join(c + ' INTEGER' for c in columns)})")
@@ -43,7 +30,6 @@ def load_csv(conn, table, path, columns):
         rows = [tuple(int(row[c]) for c in columns) for row in reader]
     placeholders = ", ".join("?" for _ in columns)
     conn.executemany(f"INSERT INTO {table} VALUES ({placeholders})", rows)
-
 
 def oracle_qa(data_dir, rmin, dmin):
     conn = sqlite3.connect(":memory:")
@@ -58,7 +44,6 @@ def oracle_qa(data_dir, rmin, dmin):
     conn.close()
     return len(rows), checksum(rows)
 
-
 def oracle_qb(data_dir, rmin, amax, color, d1, d2):
     conn = sqlite3.connect(":memory:")
     load_csv(conn, "S", f"{data_dir}/S.csv", ["sid", "rating", "age"])
@@ -72,7 +57,6 @@ def oracle_qb(data_dir, rmin, amax, color, d1, d2):
     rows = cur.fetchall()
     conn.close()
     return len(rows), checksum(rows)
-
 
 def oracle_qc(data_dir, rmin, amax, color, d1, d2, h):
     conn = sqlite3.connect(":memory:")
@@ -89,11 +73,7 @@ def oracle_qc(data_dir, rmin, amax, color, d1, d2, h):
     conn.close()
     return len(rows), checksum(rows)
 
-
 def oracle_qd(data_dir, rmin, amax, color, d1, d2):
-    """Returns (rows_in_sid_order, row_count, checksum). Rows are kept so
-    callers can verify ordering, not just the order-insensitive checksum
-    (SPEC.md section 9: "for QD also verify ordering by S.sid")."""
     conn = sqlite3.connect(":memory:")
     load_csv(conn, "S", f"{data_dir}/S.csv", ["sid", "rating", "age"])
     load_csv(conn, "R", f"{data_dir}/R.csv", ["sid", "bid", "day"])
@@ -107,7 +87,6 @@ def oracle_qd(data_dir, rmin, amax, color, d1, d2):
     rows = cur.fetchall()
     conn.close()
     return rows, len(rows), checksum(rows)
-
 
 def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin, method):
     out = subprocess.run(
@@ -124,7 +103,6 @@ def run_engine(run_query_bin, data_dir, buffer_pages, rmin, dmin, method):
     rows = int(re.search(r"Rows: (\d+)", out).group(1))
     checksum_hex = re.search(r"Checksum: 0x([0-9a-f]+)", out).group(1)
     return rows, int(checksum_hex, 16), out
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -150,7 +128,6 @@ def main():
         return 0
     print("oracle_check: MISMATCH", file=sys.stderr)
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

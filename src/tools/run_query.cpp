@@ -53,11 +53,6 @@ void PrintResult(const std::string& plan_desc, const qe::SinkResult& result, dou
   std::cout << "Checksum: 0x" << std::hex << result.checksum << std::dec << "\n";
 }
 
-// QA only, S outer / R inner fixed regardless of method (there is no
-// join-order choice for a 2-table query — see RunQB for QB's two
-// left-deep orders). --sailors-tuple-bytes / --reserves-tuple-bytes must
-// match whatever gen_data used to write the data directory; the heap
-// file format does not record its own tuple width.
 int RunQA(int argc, char** argv) {
   std::string data_dir = Arg(argc, argv, "--data-dir", "data");
   std::string method = Arg(argc, argv, "--method", "bnlj");
@@ -80,9 +75,6 @@ int RunQA(int argc, char** argv) {
   qe::HeapFile s_heap(&bp, &dm, s_file, &s_schema);
   qe::HeapFile r_heap(&bp, &dm, r_file, &r_schema);
 
-  // BNLJ reads directly from the heap files with its own pushed-down
-  // predicates (see bnlj.h); SMJ/GHJ take generic operators, so the same
-  // predicates are applied via a SeqScan+Selection pipeline instead.
   qe::SeqScan s_scan(&s_heap, {"S.sid", "S.rating", "S.age"});
   qe::Selection s_sel(&s_scan, {qe::Predicate{1, qe::CompareOp::kGt, rmin}});
   qe::SeqScan r_scan(&r_heap, {"R.sid", "R.bid", "R.day"});
@@ -99,14 +91,7 @@ int RunQA(int argc, char** argv) {
   std::string plan_name;
 
   if (method == "inlj") {
-    // Index build is a one-time setup step (SPEC.md section 12: "build
-    // indices and statistics" happens before "run all plans"), so it
-    // runs before bp.Reset() below and is not part of the measured I/O.
-    // The index file persists across separate run_query invocations on
-    // the same --data-dir (that's the point: build once, reuse across
-    // many plan runs), so only insert if it's actually empty — otherwise
-    // a second invocation would insert every row a second time on top of
-    // the first, duplicating every index entry.
+
     s_idx_file = dm.OpenFile(data_dir + "/S_sid.idx", qe::FileKind::kIndex);
     s_index = std::make_unique<qe::BPlusTree>(&bp, &dm, s_idx_file);
     if (s_index->Empty()) {
@@ -140,11 +125,7 @@ int RunQA(int argc, char** argv) {
     join = ghj.get();
     plan_name = "GHJ";
   } else if (method == "inlj") {
-    // R (outer) lacks an index, so it drives the probe; S (inner) is
-    // indexed on sid. S.rating > rmin can't be pushed into the index
-    // lookup (the index is keyed on sid, not rating), so it is applied
-    // as a post-filter on INLJ's output instead (column 4: R has 3
-    // columns, so S.rating is outer_names.size() + 1 = 4).
+
     inlj = std::make_unique<qe::INLJ>(&r_sel, 0, std::vector<std::string>{"R.sid", "R.bid", "R.day"},
                                        s_index.get(), &s_heap,
                                        std::vector<std::string>{"S.sid", "S.rating", "S.age"});
@@ -189,8 +170,7 @@ int RunQA(int argc, char** argv) {
                         ? 1.0
                         : std::ceil(std::log(s_stats.tuple_count) / std::log(300.0));
     double c = std::max(1.0, height) + 1;
-    // The outer/inner roles swap for INLJ (R outer, S inner indexed); M,
-    // N, and the outer tuple count follow that same swap.
+
     double M = (method == "inlj") ? r_stats.page_count : s_stats.page_count;
     double N = (method == "inlj") ? s_stats.page_count : r_stats.page_count;
     double outer_tuples = (method == "inlj") ? r_card : s_card;
@@ -218,7 +198,7 @@ int RunQA(int argc, char** argv) {
     std::cout << "  Est rows out: " << join_card << "\n";
   }
 
-  bp.Reset();  // start the measured run with a cold buffer pool
+  bp.Reset();
   qe::IoStats before = stats;
 
   auto start = std::chrono::steady_clock::now();
@@ -241,12 +221,6 @@ int RunQA(int argc, char** argv) {
   return 0;
 }
 
-// QB: three tables, two left-deep join orders, per-join method, and a
-// pushdown on/off toggle (SPEC.md section 8). The plan tree itself is
-// built by BuildQBPlan (src/plan/qb_plan.h) and turned into an operator
-// tree by PlanBuilder — see docs/PLAN.md Phase 7. QC and QD (below)
-// share this same setup: same tables, same join tree, different
-// wrapping on top (GroupBy+HAVING for QC, a sort delivery check for QD).
 struct QBSetup {
   qe::IoStats stats;
   qe::DiskManager dm{&stats};
@@ -280,10 +254,7 @@ struct QBSetup {
         s_index(&bp, &dm, s_idx_file),
         b_index(&bp, &dm, b_idx_file),
         builder(&bp, &dm, buffer_pages, data_dir + "/tmp_qplan", &stats) {
-    // Index build (setup, before the measured run) — needed whenever
-    // either join uses INLJ. The index file persists across separate
-    // run_query invocations on the same --data-dir, so only insert if
-    // it's actually empty (see RunQA's comment for why).
+
     if ((method1 == "inlj" || method2 == "inlj") && s_index.Empty()) {
       s_heap.Scan([this](qe::Rid rid, const qe::Tuple& t) { s_index.Insert(t[0], rid); });
       b_heap.Scan([this](qe::Rid rid, const qe::Tuple& t) { b_index.Insert(t[0], rid); });
@@ -330,12 +301,6 @@ struct QBArgs {
   }
 };
 
-// Estimates QB's predicted cardinalities, per-join I/O, and each join's
-// rank among all four methods at that step (SPEC.md section 8). This
-// estimates the *given* plan; it does not search the plan space
-// (explicitly out of scope — SPEC.md section 13). Index-lookup cost c
-// is height (estimated from catalog tuple counts, since both indexed
-// columns are unique keys) plus one data-page fetch.
 struct QBEstimate {
   double s_card, r_card, b_card;
   double join1_card, join1_io;
@@ -389,7 +354,7 @@ QBEstimate EstimateQB(const QBArgs& a, const QBSetup& setup) {
     constexpr double kFanout = 300.0;
     double height = inner_tuple_count <= 1 ? 1.0 : std::ceil(std::log(inner_tuple_count) /
                                                               std::log(kFanout));
-    return std::max(1.0, height) + 1;  // + one data page fetch (unique key)
+    return std::max(1.0, height) + 1;
   };
 
   auto rank_of = [&](const std::string& method, double M, double N, double outer_card, double c) {
@@ -405,7 +370,6 @@ QBEstimate EstimateQB(const QBArgs& a, const QBSetup& setup) {
     return -1;
   };
 
-  // Join1: R outer, (S or B) inner, depending on join order.
   bool order1 = (a.join_order == "order1");
   std::string inner1 = order1 ? "S" : "B";
   double inner1_card = order1 ? e.s_card : e.b_card;
@@ -421,11 +385,10 @@ QBEstimate EstimateQB(const QBArgs& a, const QBSetup& setup) {
                                               e.r_card, c1);
   e.join1_rank = rank_of(a.method1, join1_M, join1_N, e.r_card, c1);
 
-  // Join2: join1's result outer, whichever of S/B wasn't join1's inner.
   std::string inner2 = order1 ? "B" : "S";
   double inner2_card = order1 ? e.b_card : e.s_card;
   std::size_t inner2_key_distinct = est.DistinctCount(order1 ? "B.bid" : "S.sid");
-  std::size_t join1_cols = order1 ? 6 : 5;  // R(3)+S(3) or R(3)+B(2)
+  std::size_t join1_cols = order1 ? 6 : 5;
   double join2_M = qe::CostEstimator::PagesForCardinality(e.join1_card, join1_cols);
   double join2_N = est.PageCount(inner2);
   double c2 = index_lookup_cost(order1 ? b_stats.tuple_count : s_stats.tuple_count);
@@ -462,11 +425,6 @@ int RunQB(int argc, char** argv) {
     PrintExplain(a, estimate);
   }
 
-  // bp.Reset() must happen before Build(), not after: Build() eagerly
-  // executes and materializes every non-outermost join as part of
-  // constructing the tree (PlanBuilder::Materialize), so that I/O (and
-  // its wall-clock time) has to be inside the measured window too, not
-  // just the final Sink::Run() over the outermost join.
   setup->bp.Reset();
   qe::IoStats before = setup->stats;
   auto start = std::chrono::steady_clock::now();
@@ -491,9 +449,6 @@ int RunQB(int argc, char** argv) {
   return 0;
 }
 
-// QC: QB's join and predicates, GROUP BY S.rating, HAVING COUNT(*) > h
-// (SPEC.md section 7). GroupBy is an in-memory hash aggregate (SPEC.md
-// section 6: small group count — S.rating has 10 distinct values).
 int RunQC(int argc, char** argv) {
   QBArgs a = QBArgs::Parse(argc, argv);
   std::int32_t h = std::stoi(Arg(argc, argv, "--h", "0"));
@@ -520,10 +475,6 @@ int RunQC(int argc, char** argv) {
   return 0;
 }
 
-// QD: QB's join and predicates, ORDER BY S.sid (SPEC.md section 7). An
-// SMJ final join on sid (join_order=order2, method2=smj) delivers this
-// order for free, since a sort-merge join emits tuples in join-key
-// order; any other combination needs an explicit final sort.
 int RunQD(int argc, char** argv) {
   QBArgs a = QBArgs::Parse(argc, argv);
   auto setup = a.MakeSetup();
@@ -557,9 +508,6 @@ int RunQD(int argc, char** argv) {
 
   qe::Projection projection(ordered, {"S.sid", "R.day", "B.color"});
 
-  // SPEC.md section 9: "for QD also verify ordering by S.sid" — checked
-  // here directly (column 0 of the projection) rather than via Sink,
-  // which only tracks the order-insensitive checksum.
   projection.Open();
   qe::SinkResult result;
   bool order_ok = true;
@@ -584,7 +532,7 @@ int RunQD(int argc, char** argv) {
   return 0;
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
   std::string query = Arg(argc, argv, "--query", "qa");

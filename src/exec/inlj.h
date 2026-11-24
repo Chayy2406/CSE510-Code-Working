@@ -6,13 +6,6 @@
 
 namespace qe {
 
-// Index nested loop join (SPEC.md section 6): for every outer tuple,
-// probe the inner's B+ tree index on the join key and fetch each
-// matching inner tuple. The outer is whichever side lacks an index —
-// for QA that is Reserves, since the index is built on Sailors.sid
-// (SPEC.md's proposal: "for every tuple of R, probe an index on S").
-// Output schema is outer columns followed by inner columns, matching
-// BNLJ/SMJ/GHJ's convention (even though here "outer" is R, not S).
 class INLJ : public Operator {
  public:
   INLJ(Operator* outer, std::size_t outer_join_col, std::vector<std::string> outer_names,
@@ -67,4 +60,4 @@ class INLJ : public Operator {
   std::size_t match_pos_ = 0;
 };
 
-}  // namespace qe
+}

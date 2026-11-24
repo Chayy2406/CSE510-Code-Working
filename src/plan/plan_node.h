@@ -10,35 +10,25 @@ namespace qe {
 
 enum class PlanNodeKind { kScan, kSelection, kJoin };
 
-// A predicate referencing a column by its qualified name (e.g. "S.rating")
-// rather than a position, since the position depends on where in the
-// tree the predicate ends up applied (pushed to a scan vs. applied after
-// a join).
 struct NamedPredicate {
   std::string column;
   CompareOp op;
   std::int32_t value;
 };
 
-// A tree of plan nodes that PlanBuilder turns into an executable operator
-// tree (SPEC.md section 8). Built with the static factory methods below
-// rather than constructed field-by-field.
 struct PlanNode {
   PlanNodeKind kind;
 
-  // kScan
-  std::string table;  // "S" | "R" | "B"
+  std::string table;
 
-  // kSelection
   std::vector<NamedPredicate> predicates;
 
-  // kJoin
-  std::string method;     // "bnlj" | "smj" | "ghj" | "inlj"
-  std::string left_key;   // qualified column on the left subtree's output
-  std::string right_key;  // qualified column on the right subtree's output
+  std::string method;
+  std::string left_key;
+  std::string right_key;
 
-  std::unique_ptr<PlanNode> left;   // kSelection's child, or kJoin's left subtree
-  std::unique_ptr<PlanNode> right;  // kJoin's right subtree only
+  std::unique_ptr<PlanNode> left;
+  std::unique_ptr<PlanNode> right;
 
   static std::unique_ptr<PlanNode> Scan(std::string table) {
     auto n = std::make_unique<PlanNode>();
@@ -70,4 +60,4 @@ struct PlanNode {
   }
 };
 
-}  // namespace qe
+}

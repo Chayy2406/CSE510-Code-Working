@@ -6,22 +6,6 @@
 
 namespace qe {
 
-// Block nested loop join directly over two heap files (SPEC.md section 6).
-// Reads the outer in blocks of `buffer_pages - 2` pages; for each block,
-// rescans the entire inner table. Matches are joined on
-// outer_tuple[outer_join_col] == inner_tuple[inner_join_col]; the output
-// schema is outer columns followed by inner columns.
-//
-// Cost: every outer page is read exactly once across all blocks (M total);
-// the inner is rescanned once per block (N * ceil(M/(buffer_pages-2))
-// total), matching M + ceil(M/(B-2))*N.
-//
-// Implementation note: each block's matching outer tuples are decoded into
-// a private in-memory vector sized to the block (buffer_pages - 2 pages),
-// rather than holding that many pages physically pinned in the
-// BufferPool — only one page is ever pinned at a time. Page I/O counts
-// are identical to the textbook pinned-block version; only the peak pin
-// count differs (documented in docs/DECISIONS.md).
 class BNLJ : public Operator {
  public:
   BNLJ(HeapFile* outer, std::vector<std::string> outer_names,
@@ -78,9 +62,6 @@ class BNLJ : public Operator {
       });
     }
 
-    // The inner is rescanned in full for this block regardless of how
-    // many outer tuples survived pushdown: the cost model counts N page
-    // reads per block independent of predicate selectivity.
     for (std::size_t p = 0; p < inner_->NumPages(); ++p) {
       inner_->ScanPage(static_cast<PageNo>(p), [&](Rid, const Tuple& inner_t) {
         if (!EvaluateAll(inner_predicates_, inner_t)) return;
@@ -114,4 +95,4 @@ class BNLJ : public Operator {
   std::size_t output_pos_ = 0;
 };
 
-}  // namespace qe
+}

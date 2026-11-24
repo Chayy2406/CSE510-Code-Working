@@ -5,10 +5,6 @@
 #include <sstream>
 #include <string>
 
-// Minimal assert-style test helper. No GoogleTest dependency: a failed
-// check prints file:line, the failing expression, and exits non-zero so
-// CTest reports the test as failed.
-
 namespace testutil {
 
 inline int g_checks = 0;
@@ -31,7 +27,7 @@ inline int Finish() {
   return 0;
 }
 
-}  // namespace testutil
+}
 
 #define CHECK(cond)                                                     \
   do {                                                                  \

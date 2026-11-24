@@ -10,13 +10,11 @@ using qe::GenConfig;
 using qe::Tuple;
 
 TEST_MAIN_BEGIN
-  // Determinism: same seed and config => byte-identical (here,
-  // field-identical) tuples, for every table and even after ApplyOrder
-  // (which also draws from the seeded RNG).
+
   {
     GenConfig config;
     config.seed = 1234;
-    config.scale = 0.01;  // small: 400 sailors, 100 boats min, 1000 reserves
+    config.scale = 0.01;
     config.key_dist = "zipf";
     config.zipf_theta = 1.5;
     config.corr = 0.5;
@@ -45,9 +43,6 @@ TEST_MAIN_BEGIN
     CHECK(!r_a.empty());
   }
 
-  // Zipf skew must be visible in the key histogram: a high theta
-  // concentrates reservations on a few popular sids far more than
-  // uniform does.
   {
     constexpr std::size_t kSailors = 100;
     constexpr std::size_t kBoats = 20;
@@ -70,9 +65,8 @@ TEST_MAIN_BEGIN
     double uniform_ratio = max_over_mean("uniform", 0.0);
     double zipf_ratio = max_over_mean("zipf", 2.0);
 
-    // Uniform: the busiest sid should be close to the mean.
     CHECK(uniform_ratio < 3.0);
-    // Zipf with theta=2: the single most popular sid should dominate.
+
     CHECK(zipf_ratio > 10.0);
     CHECK(zipf_ratio > uniform_ratio);
   }

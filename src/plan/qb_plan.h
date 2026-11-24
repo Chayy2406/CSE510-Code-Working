@@ -4,21 +4,6 @@
 
 namespace qe {
 
-// Builds the PlanNode tree for QB (SPEC.md section 7): Sailors join
-// Reserves on sid, join Boats on bid, filtered by rating > rmin,
-// age < amax, color = color, day BETWEEN d1 AND d2.
-//
-// join_order "order1" = (S,R,B), joined as (R join S) join B;
-// join_order "order2" = (R,B,S), joined as (R join B) join S
-// (SPEC.md section 8: QB's two left-deep orders). R is always the outer
-// side of the first join and the accumulated left side of the second,
-// so that whichever of S or B is the inner of a given join is reachable
-// as a plain (possibly filtered) base table scan — required for that
-// join to use INLJ (SPEC.md: "INLJ only where the inner has an index";
-// the indices this project builds are on S.sid and B.bid).
-//
-// pushdown=true wraps each base scan in its own predicates; pushdown=false
-// applies every predicate once, after both joins.
 inline std::unique_ptr<PlanNode> BuildQBPlan(const std::string& join_order,
                                              const std::string& method1,
                                              const std::string& method2, bool pushdown,
@@ -59,4 +44,4 @@ inline std::unique_ptr<PlanNode> BuildQBPlan(const std::string& join_order,
   return top;
 }
 
-}  // namespace qe
+}

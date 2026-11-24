@@ -94,9 +94,7 @@ double CostEstimator::SmjIO(double M, double N, std::size_t B) {
       runs = std::ceil(runs / fan_in);
       ++passes;
     }
-    // Run formation: P read + P write. Each extra merge-and-rewrite pass:
-    // P read + P write. The fused final merge: P read only. Reduces to
-    // 3P when zero extra passes are needed (one merge pass suffices).
+
     return 2 * P + passes * (2 * P) + P;
   };
   return side_cost(M) + side_cost(N);
@@ -106,9 +104,7 @@ double CostEstimator::GhjIO(double M, double N, std::size_t B) {
   constexpr double kFudgeFactor = 1.2;
   double partitions_fit = static_cast<double>(B) > std::sqrt(kFudgeFactor * std::min(M, N));
   if (partitions_fit) return 3 * (M + N);
-  // SPEC.md: "add 2(M+N) per extra recursive partitioning level"; assume
-  // one extra level for a plan that doesn't fit at the given B (an exact
-  // recursion-depth estimate would require simulating the partitioner).
+
   return 3 * (M + N) + 2 * (M + N);
 }
 
@@ -121,4 +117,4 @@ double CostEstimator::IOForMethod(const std::string& method, double M, double N,
   throw std::invalid_argument("CostEstimator: unknown method '" + method + "'");
 }
 
-}  // namespace qe
+}

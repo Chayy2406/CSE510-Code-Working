@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Checks QC and QD against the SQLite oracle under many distinct plans.
-
-PLAN.md Phase 8 acceptance: "QC and QD match SQLite." Reuses the same
-(join_order, method1, method2, pushdown) plan sweep as
-check_qb_plans.py, but wraps the join with GroupBy+HAVING (QC) or an
-ORDER BY S.sid delivery check (QD, verifying both the oracle checksum
-and that run_query's own OrderOk flag is true). Exits non-zero on any
-mismatch.
-"""
 import argparse
 import itertools
 import re
@@ -20,7 +11,6 @@ import oracle_check as oc
 METHODS = ["bnlj", "smj", "ghj", "inlj"]
 ORDERS = ["order1", "order2"]
 PUSHDOWNS = ["on", "off"]
-
 
 def run_query(run_query_bin, query, data_dir, join_order, method1, method2, pushdown,
               buffer_pages, rmin, amax, color, d1, d2, extra=()):
@@ -48,7 +38,6 @@ def run_query(run_query_bin, query, data_dir, join_order, method1, method2, push
     order_ok_match = re.search(r"OrderOk: (true|false)", out)
     order_ok = order_ok_match.group(1) == "true" if order_ok_match else None
     return rows, int(checksum_hex, 16), order_ok
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -106,7 +95,6 @@ def main():
         return 1
     print("All QC and QD plans match the SQLite oracle.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

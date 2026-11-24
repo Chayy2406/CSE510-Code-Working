@@ -53,4 +53,4 @@ const TableStats& Catalog::GetTableStats(const std::string& table) const {
   return it->second;
 }
 
-}  // namespace qe
+}

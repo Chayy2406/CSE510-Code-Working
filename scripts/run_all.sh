@@ -1,30 +1,17 @@
 #!/usr/bin/env bash
-# One-command pipeline (SPEC.md section 12): build (Release) -> run the
-# unit tests -> for every config in CONFIG_DIR (generate data, build
-# indices/statistics, run every plan, oracle-check, write a CSV, make a
-# graph and table) -> a final make_plots.py pass over every CSV
-# together. Exits non-zero if any oracle check fails.
-#
-# Usage: ./scripts/run_all.sh [config_dir]   (default: configs)
-#   configs/smoke.json alone runs in well under a minute and is meant
-#   for testing this pipeline itself — see PLAN.md Phase 9 and
-#   SPEC.md section 12.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 CONFIG_DIR="${1:-configs}"
 
 echo "== Build (Release) =="
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S. -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 
 echo
 echo "== Unit tests =="
 ctest --test-dir build --output-on-failure
 
-# Run configs in a deterministic, sensible order: the fast pipeline
-# smoke test first (fails fast), then the Phase 6 showcase, then the
-# six experiments, then anything else found.
 ORDERED=()
 for name in smoke qa_methods e1 e2 e3 e4 e5 e6; do
   f="${CONFIG_DIR}/${name}.json"

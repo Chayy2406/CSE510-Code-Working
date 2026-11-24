@@ -7,12 +7,12 @@ namespace qe {
 
 namespace {
 
-constexpr std::size_t kLeafHeaderBytes = 12;  // is_leaf, num_entries, next_leaf
-constexpr std::size_t kLeafEntryBytes = 12;   // key, rid.page_no, rid.slot
+constexpr std::size_t kLeafHeaderBytes = 12;
+constexpr std::size_t kLeafEntryBytes = 12;
 constexpr std::size_t kMaxLeafEntries = (kPageSize - kLeafHeaderBytes) / kLeafEntryBytes;
 
-constexpr std::size_t kInternalHeaderBytes = 8;  // is_leaf, num_entries
-// num_entries keys + (num_entries + 1) children must fit after the header.
+constexpr std::size_t kInternalHeaderBytes = 8;
+
 constexpr std::size_t kMaxInternalKeys =
     (kPageSize - kInternalHeaderBytes - sizeof(std::int32_t)) / (2 * sizeof(std::int32_t));
 constexpr std::size_t kChildrenOffset = kInternalHeaderBytes;
@@ -106,7 +106,7 @@ void EncodeInternal(Page* page, const std::vector<std::int32_t>& keys,
   }
 }
 
-}  // namespace
+}
 
 BPlusTree::BPlusTree(BufferPool* bp, DiskManager* dm, FileId file)
     : bp_(bp), dm_(dm), file_(file), root_page_(kInvalidPageNo), height_(0) {
@@ -198,13 +198,9 @@ std::optional<BPlusTree::SplitResult> BPlusTree::InsertIntoLeaf(PageNo page_no,
     return std::nullopt;
   }
 
-  // Pick the split boundary so it never falls inside a run of equal
-  // keys: otherwise the promoted separator wouldn't be a valid upper
-  // bound for the left subtree (see the class comment's known
-  // limitation for when a single key's duplicates alone overflow a leaf).
   std::size_t mid = entries.size() / 2;
   while (mid < entries.size() && entries[mid].key == entries[mid - 1].key) ++mid;
-  if (mid >= entries.size()) mid = entries.size() / 2;  // all-duplicate fallback
+  if (mid >= entries.size()) mid = entries.size() / 2;
 
   std::vector<LeafEntry> left(entries.begin(), entries.begin() + static_cast<long>(mid));
   std::vector<LeafEntry> right(entries.begin() + static_cast<long>(mid), entries.end());
@@ -311,4 +307,4 @@ void BPlusTree::EqualityScan(std::int32_t key,
   RangeScan(key, key, [&fn](std::int32_t, Rid rid) { fn(rid); });
 }
 
-}  // namespace qe
+}

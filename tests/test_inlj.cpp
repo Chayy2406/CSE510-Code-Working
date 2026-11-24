@@ -23,14 +23,13 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
 
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
-  // Correctness against the reference executor: R (outer) probes an
-  // index on S.sid (inner), with duplicate-heavy reservations.
+
   {
     constexpr std::size_t kTupleBytes = 200;
     constexpr std::int32_t kNumSailors = 15;
@@ -98,16 +97,9 @@ TEST_MAIN_BEGIN
     std::filesystem::remove(idx_path);
   }
 
-  // Clustered vs. unclustered I/O (SPEC.md section 6/8): same logical S
-  // table, physically sorted by sid (clustered) vs. shuffled
-  // (unclustered), probed in the same sid order by R. A small buffer
-  // pool (too small to hold all of S resident) should make the
-  // unclustered case cost meaningfully more data-page reads, since
-  // clustering lets consecutive nearby-sid probes land on a
-  // still-resident page.
   {
-    constexpr std::size_t kTupleBytes = 200;  // (4096-4)/200 = 20 sailors/page
-    constexpr std::int32_t kNumSailors = 200;  // 10 pages
+    constexpr std::size_t kTupleBytes = 200;
+    constexpr std::int32_t kNumSailors = 200;
     constexpr std::int32_t kNumReserves = 400;
 
     auto measure = [&](bool clustered) {
@@ -119,8 +111,6 @@ TEST_MAIN_BEGIN
         std::mt19937 shuffle_rng(3);
         std::shuffle(sailors.begin(), sailors.end(), shuffle_rng);
       }
-      // sorted => consecutive storage order is by sid: clustered.
-      // shuffled => physical order has no relation to sid: unclustered.
 
       std::string s_path = TempPath(clustered ? "inlj_clus_s.bin" : "inlj_unclus_s.bin");
       std::string idx_path =
@@ -130,7 +120,7 @@ TEST_MAIN_BEGIN
 
       IoStats stats;
       DiskManager dm(&stats);
-      constexpr std::size_t kPoolFrames = 4;  // too small to hold all 10 S pages
+      constexpr std::size_t kPoolFrames = 4;
       BufferPool bp(&dm, kPoolFrames, &stats);
       Schema s_schema({"sid", "rating", "age"}, kTupleBytes);
       FileId s_file = dm.OpenFile(s_path, FileKind::kBase);
@@ -144,9 +134,6 @@ TEST_MAIN_BEGIN
       bp.Reset();
       IoStats before = stats;
 
-      // R's probe order follows increasing sid (the common case where
-      // outer tuples exhibit locality in the join key), repeated with
-      // some reuse to mimic realistic reservation patterns.
       for (std::int32_t i = 0; i < kNumReserves; ++i) {
         std::int32_t sid = (i / 2) % kNumSailors;
         s_index.EqualityScan(sid, [&](Rid rid) { s_heap.Fetch(rid); });
@@ -157,12 +144,11 @@ TEST_MAIN_BEGIN
       return stats.reads_base - before.reads_base;
     };
 
-    std::int64_t clustered_reads = measure(/*clustered=*/true);
-    std::int64_t unclustered_reads = measure(/*clustered=*/false);
+    std::int64_t clustered_reads = measure( true);
+    std::int64_t unclustered_reads = measure( false);
 
     CHECK(clustered_reads < unclustered_reads);
-    // Clustered locality should cut data-page reads substantially, not
-    // just marginally.
+
     CHECK(clustered_reads * 2 < unclustered_reads);
   }
 TEST_MAIN_END

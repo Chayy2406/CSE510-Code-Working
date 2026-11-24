@@ -9,9 +9,6 @@ namespace qe {
 
 enum class CompareOp { kEq, kLt, kLe, kGt, kGe };
 
-// tuple[col] `op` value. Column indices are positions in whatever schema
-// the predicate is being evaluated against (a scan's table schema, or a
-// join's combined output schema for post-join filters).
 struct Predicate {
   std::size_t col;
   CompareOp op;
@@ -30,7 +27,6 @@ inline bool Evaluate(const Predicate& p, const Tuple& t) {
   return false;
 }
 
-// AND of every predicate in the list (an empty list always passes).
 inline bool EvaluateAll(const std::vector<Predicate>& preds, const Tuple& t) {
   for (const Predicate& p : preds) {
     if (!Evaluate(p, t)) return false;
@@ -38,4 +34,4 @@ inline bool EvaluateAll(const std::vector<Predicate>& preds, const Tuple& t) {
   return true;
 }
 
-}  // namespace qe
+}

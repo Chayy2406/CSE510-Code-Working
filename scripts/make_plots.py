@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Turns one experiment's results CSV into a graph, a console table, and
-the estimated-vs-measured comparisons SPEC.md section 11 asks every
-experiment to emit: the measured/estimated I/O ratio, and whether the
-estimator's top-ranked plan is the measured-fastest plan (only
-meaningful for rows that share a "run" / sweep point, e.g. a
-methods-comparison experiment).
-
-Callable as a library (run_experiments.py imports plot_experiment
-directly, with already-typed in-memory rows) or standalone:
-    python3 scripts/make_plots.py results/e1.csv --x-label "Scale factor"
-"""
 import argparse
 import csv
 import os
@@ -23,7 +12,6 @@ import matplotlib.pyplot as plt
 NUMERIC_FLOAT_FIELDS = ["time_ms", "est_io", "est_out_rows", "x_value", "scale", "zipf_theta",
                         "corr"]
 NUMERIC_INT_FIELDS = ["page_reads", "page_writes", "run", "ghj_overflow_partitions", "tuples_out"]
-
 
 def load_csv_rows(path):
     with open(path, newline="") as f:
@@ -43,7 +31,6 @@ def load_csv_rows(path):
                     pass
         r["oracle_ok"] = str(r.get("oracle_ok")).lower() == "true"
     return rows
-
 
 def plot_experiment(experiment, rows, x_label, figures_dir):
     os.makedirs(figures_dir, exist_ok=True)
@@ -80,7 +67,6 @@ def plot_experiment(experiment, rows, x_label, figures_dir):
         print(f"{r['plan_id']:<20}{r['x_value']:>10}{r['time_ms']:>12.2f}{io:>10}{est:>10}"
               f"{str(r['oracle_ok']):>8}")
 
-    # Estimated-vs-measured comparison (SPEC.md section 11's closing line).
     pairs = [(r["page_reads"] + r["page_writes"], r["est_io"]) for r in rows
              if r.get("est_io") not in (None, "", 0)]
     if pairs:
@@ -88,7 +74,6 @@ def plot_experiment(experiment, rows, x_label, figures_dir):
         print(f"\nMeasured/estimated I/O ratio: min={min(ratio_values):.2f} "
               f"max={max(ratio_values):.2f} mean={statistics.mean(ratio_values):.2f}")
 
-    # Is the estimator's top-ranked plan the measured-fastest plan?
     by_run = {}
     for r in rows:
         by_run.setdefault(r["run"], []).append(r)
@@ -104,7 +89,6 @@ def plot_experiment(experiment, rows, x_label, figures_dir):
         print(f"Estimator's top plan == measured fastest: {agree}/{len(comparable)} points")
 
     return fig_path
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -127,7 +111,6 @@ def main():
             ok = False
         print()
     return 0 if ok else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -109,4 +109,4 @@ void BufferPool::Reset() {
   }
 }
 
-}  // namespace qe
+}

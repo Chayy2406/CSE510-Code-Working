@@ -12,9 +12,6 @@ struct SinkResult {
   std::uint64_t checksum = 0;
 };
 
-// Terminal consumer: pulls every tuple from `child`, counting rows and
-// folding them into an order-insensitive checksum. Writes no pages, so
-// output cost is excluded from the join I/O formulas (SPEC.md section 6).
 class Sink {
  public:
   explicit Sink(Operator* child) : child_(child) {}
@@ -35,4 +32,4 @@ class Sink {
   Operator* child_;
 };
 
-}  // namespace qe
+}

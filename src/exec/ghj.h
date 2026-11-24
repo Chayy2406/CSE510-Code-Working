@@ -12,22 +12,6 @@
 
 namespace qe {
 
-// Grace hash join (SPEC.md section 6). Partitions both inputs into
-// (buffer_pages - 1) buckets with a seeded hash; for each bucket pair,
-// builds an in-memory hash table on the smaller side and probes with the
-// other. A bucket whose smaller side still exceeds (buffer_pages - 2)
-// pages is recursively re-partitioned with a new seed, up to a depth
-// limit; beyond that limit (heavy skew), it falls back to a simple
-// nested-loop join for just that bucket and increments
-// stats->ghj_overflow_partitions.
-//
-// Deviation from SPEC.md: the overflow fallback is a plain nested loop
-// over the two oversized bucket files, not a literal reuse of the BNLJ
-// class (which is built around whole HeapFiles, not page sub-ranges).
-// It is functionally equivalent for a single already-small-ish bucket
-// and is only ever used on the rare skewed partition, not the common
-// path, so its I/O is not expected to hit the 3(M+N) formula; see
-// docs/DECISIONS.md.
 class GHJ : public Operator {
  public:
   GHJ(Operator* left, std::size_t left_col, const Schema* left_temp_schema,
@@ -87,4 +71,4 @@ class GHJ : public Operator {
   std::size_t output_pos_ = 0;
 };
 
-}  // namespace qe
+}

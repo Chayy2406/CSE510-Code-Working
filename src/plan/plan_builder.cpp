@@ -47,7 +47,7 @@ HeapFile* PlanBuilder::Materialize(Operator* op) {
   owned_schemas_.push_back(std::move(schema));
 
   std::string path = temp_prefix_ + "_materialize_" + std::to_string(temp_counter_++);
-  std::filesystem::remove(path);  // temp files must always start empty
+  std::filesystem::remove(path);
   FileId file = dm_->OpenFile(path, FileKind::kTemp);
   auto heap = std::make_unique<HeapFile>(bp_, dm_, file, schema_ptr);
   HeapFile* heap_ptr = heap.get();
@@ -74,10 +74,8 @@ PlanBuilder::HeapInput PlanBuilder::ResolveHeapInput(const PlanNode& node) {
     }
     return HeapInput{tb.heap, std::move(preds), tb.columns};
   }
-  // A join subtree, or a selection over something other than a plain
-  // scan: build generically and materialize so BNLJ (which needs direct
-  // heap-file access for its blocked I/O) can still consume it.
-  Operator* op = BuildRec(node, /*is_outermost=*/false);
+
+  Operator* op = BuildRec(node,  false);
   HeapFile* heap = Materialize(op);
   return HeapInput{heap, {}, op->OutputSchema()};
 }
@@ -124,7 +122,6 @@ Operator* PlanBuilder::BuildRec(const PlanNode& node, bool is_outermost) {
     return ptr;
   }
 
-  // kJoin
   Operator* join_op = nullptr;
 
   if (node.method == "bnlj") {
@@ -213,4 +210,4 @@ std::string PlanBuilder::Describe(const PlanNode& node) const {
   return "";
 }
 
-}  // namespace qe
+}

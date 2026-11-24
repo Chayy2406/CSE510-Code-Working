@@ -12,21 +12,12 @@
 
 namespace qe {
 
-// A sorted run: a contiguous page range [start, end) of `heap`, already
-// sorted on sort_col. A SortedRunSet is one or more such runs, in their
-// original relative order (needed for stable-sort tie-breaking: on equal
-// keys, the earliest run wins).
 struct SortedRunSet {
   HeapFile* heap = nullptr;
   std::vector<std::pair<PageNo, PageNo>> runs;
   std::size_t sort_col = 0;
 };
 
-// Pull-based k-way merge over a SortedRunSet's remaining runs: at each
-// step, emits the smallest key across all active run cursors, breaking
-// ties by the lowest run index (preserving stability through repeated
-// merges). This is the "final merge" that SMJ fuses directly into its
-// join loop instead of materializing to disk.
 class FusedMerge : public Operator {
  public:
   FusedMerge(SortedRunSet runs, std::vector<std::string> schema);
@@ -55,18 +46,9 @@ class FusedMerge : public Operator {
   std::vector<RunCursor> cursors_;
 };
 
-// Run formation (SPEC.md section 6): reads `child` fully, forming sorted
-// runs of buffer_pages pages each, then shrinks the run count via
-// (buffer_pages - 1)-way merge-and-rewrite passes until at most
-// `max_runs` remain (PrepareSortedRuns), or down to exactly one run
-// (Sort(), the fully materialized result). Ties are stable throughout:
-// run formation uses std::stable_sort, and merges always prefer the
-// lowest-indexed run on equal keys.
 class ExternalSort {
  public:
-  // child, temp_schema, bp, dm must outlive this ExternalSort and any
-  // SortedRunSet/FusedMerge built from it: the HeapFiles it creates for
-  // runs and merge passes are owned here.
+
   ExternalSort(Operator* child, std::size_t sort_col, const Schema* temp_schema,
                std::vector<std::string> output_names, std::size_t buffer_pages,
                BufferPool* bp, DiskManager* dm, std::string temp_path_prefix);
@@ -93,4 +75,4 @@ class ExternalSort {
   std::vector<std::unique_ptr<HeapFile>> heap_files_;
 };
 
-}  // namespace qe
+}

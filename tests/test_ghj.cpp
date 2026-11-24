@@ -22,7 +22,7 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
 
 std::vector<Tuple> RunGhjQA(HeapFile* s_heap, HeapFile* r_heap, std::int32_t rmin,
@@ -47,7 +47,7 @@ std::vector<Tuple> RunGhjQA(HeapFile* s_heap, HeapFile* r_heap, std::int32_t rmi
   return out;
 }
 
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
   constexpr std::size_t kTupleBytes = 1024;
@@ -86,7 +86,7 @@ TEST_MAIN_BEGIN
   HeapFile r_heap(&bp, &dm, r_file, &r_schema);
   for (const Tuple& t : sailors) s_heap.Append(t);
   for (const Tuple& t : reserves) r_heap.Append(t);
-  bp.FlushAll();  // the loop below reopens these files via a fresh DiskManager
+  bp.FlushAll();
 
   std::vector<Tuple> expected = ReferenceJoinQA(sailors, reserves, kRmin, kDmin);
   std::sort(expected.begin(), expected.end());
@@ -97,9 +97,6 @@ TEST_MAIN_BEGIN
   CHECK(M >= 4);
   CHECK(N >= 4);
 
-  // Correctness against the reference executor at several buffer sizes,
-  // including small ones that force recursive re-partitioning on the
-  // skewed sid.
   for (std::size_t buffer_pages : {std::size_t{3}, std::size_t{5}, std::size_t{50}}) {
     IoStats run_stats;
     DiskManager run_dm(&run_stats);
@@ -113,7 +110,6 @@ TEST_MAIN_BEGIN
     CHECK(actual == expected);
   }
 
-  // I/O cost "close to" 3(M+N) when partitions fit without recursion.
   {
     IoStats cost_stats;
     DiskManager cost_dm(&cost_stats);
@@ -134,11 +130,6 @@ TEST_MAIN_BEGIN
     CHECK_EQ(cost_stats.ghj_overflow_partitions, std::int64_t{0});
   }
 
-  // SPEC.md section 9 explicitly requires a case where skew forces the
-  // BNLJ-style fallback (not just recursion): every tuple on both sides
-  // shares the same join key, so no amount of re-hashing with a new seed
-  // can ever split that bucket — recursion exhausts its depth limit and
-  // GHJ must fall back, incrementing ghj_overflow_partitions.
   {
     std::string hs_path = TempPath("ghj_hot_s.bin");
     std::string hr_path = TempPath("ghj_hot_r.bin");
@@ -152,8 +143,8 @@ TEST_MAIN_BEGIN
     HeapFile hs_heap(&hot_bp, &hot_dm, hs_file, &s_schema);
     HeapFile hr_heap(&hot_bp, &hot_dm, hr_file, &r_schema);
 
-    constexpr int kHotSailors = 60;   // all sid=0: ~20 pages
-    constexpr int kHotReserves = 60;  // all sid=0: ~20 pages
+    constexpr int kHotSailors = 60;
+    constexpr int kHotReserves = 60;
     std::vector<Tuple> hot_sailors, hot_reserves;
     for (int i = 0; i < kHotSailors; ++i) hot_sailors.push_back({0, 5, 20 + i});
     for (int i = 0; i < kHotReserves; ++i) hot_reserves.push_back({0, i, 100 + i});
@@ -162,14 +153,14 @@ TEST_MAIN_BEGIN
     hot_bp.FlushAll();
 
     std::vector<Tuple> hot_expected =
-        ReferenceJoinQA(hot_sailors, hot_reserves, /*rmin=*/0, /*dmin=*/0);
+        ReferenceJoinQA(hot_sailors, hot_reserves,  0,  0);
     std::sort(hot_expected.begin(), hot_expected.end());
     CHECK_EQ(hot_expected.size(), static_cast<std::size_t>(kHotSailors) * kHotReserves);
 
     SeqScan hs_scan(&hs_heap, {"S.sid", "S.rating", "S.age"});
     SeqScan hr_scan(&hr_heap, {"R.sid", "R.bid", "R.day"});
     GHJ hot_ghj(&hs_scan, 0, &s_schema, {"S.sid", "S.rating", "S.age"}, &hr_scan, 0,
-                &r_schema, {"R.sid", "R.bid", "R.day"}, /*buffer_pages=*/3, &hot_bp,
+                &r_schema, {"R.sid", "R.bid", "R.day"},  3, &hot_bp,
                 &hot_dm, TempPath("ghj_hot_tmp"), &hot_stats);
     Projection hot_proj(&hot_ghj, {"S.sid", "S.rating", "R.bid", "R.day"});
     hot_proj.Open();

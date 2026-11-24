@@ -31,9 +31,6 @@ void SMJ::Open() {
       right_, right_col_, right_temp_schema_, right_names_, buffer_pages_, bp_, dm_,
       temp_path_prefix_ + "_smj_right");
 
-  // Each side sorts down to at most buffer_pages - 1 runs, then the final
-  // merge is fused with the join loop below instead of being
-  // materialized and re-read (SPEC.md section 6/8).
   std::size_t fan_in = buffer_pages_ > 1 ? buffer_pages_ - 1 : 1;
   SortedRunSet left_runs = left_sorter_->PrepareSortedRuns(fan_in);
   SortedRunSet right_runs = right_sorter_->PrepareSortedRuns(fan_in);
@@ -85,10 +82,6 @@ void SMJ::ProcessEqualBlock(std::int32_t key) {
   std::size_t group_capacity = buffer_pages_ * tuples_per_page;
   if (group_capacity == 0) group_capacity = 1;
 
-  // Gather the whole left-side duplicate group for this key. If it grows
-  // past one run's worth of tuples, spill it to a temp heap file instead
-  // of holding it unbounded in memory (SPEC.md section 6: "must fit the
-  // budget or fall back to rescanning").
   while (left_valid_ && left_cur_[left_col_] == key) {
     if (spilled) {
       spill_heap_->Append(left_cur_);
@@ -107,8 +100,6 @@ void SMJ::ProcessEqualBlock(std::int32_t key) {
     AdvanceLeft();
   }
 
-  // Stream the right side's matching tuples (not buffered) and cross
-  // each one against the (possibly spilled) left group.
   while (right_valid_ && right_cur_[right_col_] == key) {
     if (!spilled) {
       for (const Tuple& lt : left_group_mem_) {
@@ -146,4 +137,4 @@ void SMJ::Close() {
   spill_heap_.reset();
 }
 
-}  // namespace qe
+}

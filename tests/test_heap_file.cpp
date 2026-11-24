@@ -21,14 +21,12 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
-  // Round trip: append N tuples with a tiny tuple width so a handful of
-  // pages are needed, then verify Fetch and Scan both return exactly
-  // what was written, in order.
+
   {
     std::string path = TempPath("heap_round_trip.bin");
     std::filesystem::remove(path);
@@ -36,13 +34,13 @@ TEST_MAIN_BEGIN
     DiskManager dm(&stats);
     BufferPool bp(&dm, 4, &stats);
     qe::FileId file = dm.OpenFile(path, FileKind::kBase);
-    Schema schema({"sid", "rating", "age"}, /*tuple_bytes=*/12);  // no padding
+    Schema schema({"sid", "rating", "age"},  12);
 
     std::vector<Rid> rids;
     std::vector<Tuple> expected;
     {
       HeapFile heap(&bp, &dm, file, &schema);
-      // (4096 - 4) / 12 = 341 tuples per page; write enough for 3+ pages.
+
       for (int i = 0; i < 1000; ++i) {
         Tuple t{i, (i % 10) + 1, 16 + (i % 55)};
         rids.push_back(heap.Append(t));
@@ -62,8 +60,6 @@ TEST_MAIN_BEGIN
       CHECK_EQ(scanned, expected.size());
     }
 
-    // Reopening a HeapFile on the same (already populated) file must pick
-    // up where the previous instance left off.
     {
       HeapFile heap(&bp, &dm, file, &schema);
       CHECK_EQ(heap.NumPages(), static_cast<std::size_t>(rids.back().page_no) + 1);
@@ -78,8 +74,6 @@ TEST_MAIN_BEGIN
     std::filesystem::remove(path);
   }
 
-  // Zero padding: a tuple narrower than tuple_bytes must still round-trip
-  // (the padding bytes are not part of the logical tuple).
   {
     std::string path = TempPath("heap_padding.bin");
     std::filesystem::remove(path);
@@ -87,7 +81,7 @@ TEST_MAIN_BEGIN
     DiskManager dm(&stats);
     BufferPool bp(&dm, 4, &stats);
     qe::FileId file = dm.OpenFile(path, FileKind::kBase);
-    Schema schema({"bid", "color"}, /*tuple_bytes=*/50);  // 8 bytes of data, 42 padding
+    Schema schema({"bid", "color"},  50);
     HeapFile heap(&bp, &dm, file, &schema);
 
     Tuple t{7, 3};

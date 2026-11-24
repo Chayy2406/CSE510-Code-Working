@@ -22,7 +22,7 @@ namespace {
 std::string TempPath(const char* name) {
   return (std::filesystem::temp_directory_path() /
           (std::string("qe_test_") + std::to_string(getpid()) + "_" + name))
-      .string();
+.string();
 }
 
 std::vector<Tuple> RunSmjQA(HeapFile* s_heap, HeapFile* r_heap, std::int32_t rmin,
@@ -47,10 +47,10 @@ std::vector<Tuple> RunSmjQA(HeapFile* s_heap, HeapFile* r_heap, std::int32_t rmi
   return out;
 }
 
-}  // namespace
+}
 
 TEST_MAIN_BEGIN
-  constexpr std::size_t kTupleBytes = 1024;  // 3 tuples/page: forces multiple pages
+  constexpr std::size_t kTupleBytes = 1024;
   constexpr std::int32_t kNumSailors = 12;
   constexpr std::int32_t kNumReserves = 40;
   constexpr std::int32_t kRmin = 2;
@@ -59,8 +59,7 @@ TEST_MAIN_BEGIN
   std::mt19937 rng(123);
   std::uniform_int_distribution<std::int32_t> rating_dist(1, 10);
   std::uniform_int_distribution<std::int32_t> day_dist(1, 365);
-  // Skewed sid distribution: sid 0 and 1 are heavily over-represented,
-  // giving a duplicate-heavy group on the sort-merge side.
+
   std::discrete_distribution<std::int32_t> skewed_sid(
       {40, 30, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2});
 
@@ -98,9 +97,6 @@ TEST_MAIN_BEGIN
   CHECK(M >= 4);
   CHECK(N >= 4);
 
-  // Correctness against the reference executor, including a buffer size
-  // tiny enough to force the duplicate-group spill-to-disk path (one
-  // run's worth of tuples at buffer_pages=2 is only a few tuples).
   for (std::size_t buffer_pages : {std::size_t{2}, std::size_t{4}, std::size_t{50}}) {
     std::vector<Tuple> actual =
         RunSmjQA(&s_heap, &r_heap, kRmin, kDmin, buffer_pages, &bp, &dm, &s_schema,
@@ -108,19 +104,11 @@ TEST_MAIN_BEGIN
     CHECK(actual == expected);
   }
 
-  // I/O cost "close to" 3(M+N) when the buffer is large enough that each
-  // side's run formation already produces <= buffer_pages - 1 runs (no
-  // extra merge-and-rewrite pass needed before the fused final merge).
   {
     IoStats cost_stats;
     DiskManager cost_dm(&cost_stats);
-    constexpr std::size_t kBufferPages = 30;  // SMJ's own declared budget
-    // The physical pool is deliberately smaller than M + N: large enough
-    // to hold what SMJ actually pins at once (never more than a page or
-    // two — see external_sort.h's note on not literally pinning whole
-    // runs), but too small to let the whole (tiny, test-scale) sorted
-    // output stay resident for a free hit on the fused merge's read,
-    // which real production-scale data wouldn't get either.
+    constexpr std::size_t kBufferPages = 30;
+
     constexpr std::size_t kPhysicalFrames = 4;
     BufferPool cost_bp(&cost_dm, kPhysicalFrames, &cost_stats);
     FileId s_file2 = cost_dm.OpenFile(s_path, FileKind::kBase);
@@ -128,7 +116,6 @@ TEST_MAIN_BEGIN
     HeapFile s_heap2(&cost_bp, &cost_dm, s_file2, &s_schema);
     HeapFile r_heap2(&cost_bp, &cost_dm, r_file2, &r_schema);
 
-    // Cold start (SPEC.md section 10): measure only SMJ's own I/O.
     cost_bp.Reset();
     cost_stats.Reset();
 
