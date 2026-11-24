@@ -1,0 +1,16 @@
+{
+  "experiment": "qa_methods",
+  "dataset_id": "qa_methods",
+  "seed": 7,
+  "scale": 0.1,
+  "key_dist": "uniform",
+  "zipf_theta": 1.0,
+  "corr": 0.0,
+  "order": "random",
+  "rmin": 4,
+  "dmin": 150,
+  "methods": ["bnlj", "smj", "ghj", "inlj"],
+  "buffer_pages": 20,
+  "buffer_sweep": [5, 10, 20, 40, 80],
+  "sweep_method": "bnlj"
+}

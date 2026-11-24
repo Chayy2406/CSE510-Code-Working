@@ -1,0 +1,10 @@
+experiment,query,plan_id,plan_desc,dataset_id,seed,scale,key_dist,zipf_theta,corr,order,B,run,time_ms,page_reads,page_writes,reads_base,reads_index,reads_temp,writes_temp,buffer_hits,tuples_out,checksum,est_io,est_out_rows,ghj_overflow_partitions,oracle_ok
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,20,1,13.8709,800,0,800,0,0,0,0,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,smj,SMJ,qa_methods,7,0.1,uniform,1.0,0.0,random,20,1,61.2635,485,178,308,0,177,178,22138,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,ghj,GHJ,qa_methods,7,0.1,uniform,1.0,0.0,random,20,1,54.8933,1320,1020,300,0,1020,1020,21303,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,inlj,INLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,20,1,8.87592,8054,0,5025,3029,0,0,25891,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,5,1,19.4195,4300,0,4300,0,0,0,0,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,10,1,14.5827,1800,0,1800,0,0,0,0,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,20,1,11.8477,800,0,800,0,0,0,0,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,40,1,11.1433,550,0,550,0,0,0,0,3591,0x2a051340e22e693c,,,0,True
+qa_methods,QA,bnlj,BNLJ,qa_methods,7,0.1,uniform,1.0,0.0,random,80,1,11.8443,300,0,300,0,0,0,0,3591,0x2a051340e22e693c,,,0,True

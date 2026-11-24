@@ -148,6 +148,13 @@ int main(int argc, char** argv) {
   std::cout << "Time: " << time_ms << " ms\n";
   std::cout << "Reads: " << (stats.page_reads - before.page_reads) << "\n";
   std::cout << "Writes: " << (stats.page_writes - before.page_writes) << "\n";
+  std::cout << "ReadsBase: " << (stats.reads_base - before.reads_base) << "\n";
+  std::cout << "ReadsIndex: " << (stats.reads_index - before.reads_index) << "\n";
+  std::cout << "ReadsTemp: " << (stats.reads_temp - before.reads_temp) << "\n";
+  std::cout << "WritesTemp: " << (stats.writes_temp - before.writes_temp) << "\n";
+  std::cout << "BufferHits: " << (stats.buffer_hits - before.buffer_hits) << "\n";
+  std::cout << "GhjOverflowPartitions: "
+            << (stats.ghj_overflow_partitions - before.ghj_overflow_partitions) << "\n";
   std::cout << "Checksum: 0x" << std::hex << result.checksum << std::dec << "\n";
   return 0;
 }

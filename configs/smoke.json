@@ -1,0 +1,16 @@
+{
+  "experiment": "smoke",
+  "dataset_id": "smoke",
+  "seed": 1,
+  "scale": 0.02,
+  "key_dist": "uniform",
+  "zipf_theta": 1.0,
+  "corr": 0.0,
+  "order": "random",
+  "rmin": 3,
+  "dmin": 50,
+  "methods": ["bnlj", "smj", "ghj", "inlj"],
+  "buffer_pages": 10,
+  "buffer_sweep": [3, 5, 8, 12, 20],
+  "sweep_method": "bnlj"
+}
